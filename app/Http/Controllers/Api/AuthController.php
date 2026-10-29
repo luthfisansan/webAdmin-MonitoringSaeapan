@@ -6,13 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\Pengguna;
 use App\Models\Peran;
-use App\Models\RiwayatStatusAkun;
 use App\Models\Siswa;
 use App\Models\StatusAkun;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -34,9 +34,13 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'nama_lengkap' => ['required', 'string', 'max:120'],
-            'email' => ['required', 'email', 'max:150'],
-            'password' => ['required', 'string', 'min:6'],
-            'kelas_id' => ['required', 'integer', 'exists:kelas_m,kelas_id'],
+            'email' => ['required', 'string', 'email', 'max:150'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'kelas_id' => [
+                'required',
+                'integer',
+                Rule::exists('kelas_m', 'kelas_id')->where('aktif', true),
+            ],
             'jenis_kelamin' => ['nullable', 'string', 'in:L,P'],
             'tanggal_lahir' => ['nullable', 'date'],
         ]);
@@ -66,7 +70,7 @@ class AuthController extends Controller
                 'terakhir_login_pada' => now(),
             ]);
 
-            $siswaBaru = Siswa::query()->create([
+            Siswa::query()->create([
                 'pengguna_id' => $penggunaBaru->pengguna_id,
                 'kelas_id' => $validated['kelas_id'],
                 'status_akun_id' => $statusPretest->status_akun_id,
@@ -74,22 +78,16 @@ class AuthController extends Controller
                 'tanggal_lahir' => $validated['tanggal_lahir'] ?? null,
             ]);
 
-            RiwayatStatusAkun::query()->create([
-                'siswa_id' => $siswaBaru->siswa_id,
-                'status_akun_id' => $statusPretest->status_akun_id,
-                'diubah_oleh_pengguna_id' => $penggunaBaru->pengguna_id,
-                'catatan' => 'Registrasi akun siswa baru',
-            ]);
-
             return $penggunaBaru;
         });
 
+        $pengguna->load(['peran', 'siswa.statusAkun', 'siswa.kelas']);
         $token = $pengguna->createToken('mobile')->plainTextToken;
 
         return response()->json([
             'data' => [
                 'token' => $token,
-                'user' => $this->formatProfil($pengguna->fresh(['peran', 'siswa.statusAkun', 'siswa.kelas'])),
+                'user' => $this->formatMe($pengguna),
             ],
             'message' => 'Registrasi berhasil.',
         ], 201);
@@ -98,7 +96,7 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ]);
 
@@ -110,15 +108,23 @@ class AuthController extends Controller
             ->first();
 
         if (! $pengguna || ! Hash::check($validated['password'], $pengguna->kata_sandi_hash)) {
-            throw ValidationException::withMessages([
-                'email' => ['Email atau kata sandi tidak sesuai.'],
-            ]);
+            return response()->json([
+                'data' => null,
+                'message' => 'Email atau kata sandi salah.',
+            ], 401);
         }
 
         if (! $pengguna->aktif) {
             return response()->json([
                 'data' => null,
                 'message' => 'Akun pengguna tidak aktif.',
+            ], 403);
+        }
+
+        if ($pengguna->peran?->kode !== 'SISWA' || ! $pengguna->siswa) {
+            return response()->json([
+                'data' => null,
+                'message' => 'Login API hanya untuk akun siswa.',
             ], 403);
         }
 
@@ -131,7 +137,7 @@ class AuthController extends Controller
         return response()->json([
             'data' => [
                 'token' => $token,
-                'user' => $this->formatProfil($pengguna),
+                'user' => $this->formatMe($pengguna),
             ],
             'message' => 'Login berhasil.',
         ]);
@@ -150,40 +156,52 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         /** @var Pengguna $pengguna */
-        $pengguna = $request->user()->load(['peran', 'siswa.statusAkun', 'siswa.kelas']);
+        $pengguna = $request->user()->fresh(['peran', 'siswa.statusAkun', 'siswa.kelas']);
+
+        if (! $pengguna || ! $pengguna->aktif) {
+            return response()->json([
+                'data' => null,
+                'message' => 'Akun pengguna tidak aktif.',
+            ], 403);
+        }
 
         return response()->json([
-            'data' => $this->formatProfil($pengguna),
+            'data' => $this->formatMe($pengguna),
             'message' => 'Data profil pengguna.',
         ]);
     }
 
     /**
-     * @return array<string, mixed>
+     * Format representasi profil sesuai spesifikasi GET /api/me.
+     *
+     * @return array{
+     *     pengguna_id: int,
+     *     nama_lengkap: string,
+     *     email: string,
+     *     siswa_id: int|null,
+     *     kelas: array{kelas_id: int, nama_kelas: string}|null,
+     *     status_akun: array{kode: string, nama: string}|null,
+     *     terverifikasi_pada: string|null
+     * }
      */
-    protected function formatProfil(Pengguna $pengguna): array
+    protected function formatMe(Pengguna $pengguna): array
     {
         $siswa = $pengguna->siswa;
 
         return [
             'pengguna_id' => $pengguna->pengguna_id,
-            'siswa_id' => $siswa?->siswa_id,
             'nama_lengkap' => $pengguna->nama_lengkap,
             'email' => $pengguna->email,
-            'peran' => $pengguna->peran?->kode,
-            'jenis_kelamin' => $siswa?->jenis_kelamin,
-            'tanggal_lahir' => $siswa?->tanggal_lahir?->toDateString(),
-            'status_akun' => $siswa?->statusAkun ? [
-                'status_akun_id' => $siswa->statusAkun->status_akun_id,
-                'kode' => $siswa->statusAkun->kode,
-                'nama' => $siswa->statusAkun->nama,
-            ] : null,
+            'siswa_id' => $siswa?->siswa_id,
             'kelas' => $siswa?->kelas ? [
                 'kelas_id' => $siswa->kelas->kelas_id,
                 'nama_kelas' => $siswa->kelas->nama_kelas,
-                'tahun_ajaran' => $siswa->kelas->tahun_ajaran,
             ] : null,
+            'status_akun' => $siswa?->statusAkun ? [
+                'kode' => $siswa->statusAkun->kode,
+                'nama' => $siswa->statusAkun->nama,
+            ] : null,
+            'terverifikasi_pada' => $siswa?->terverifikasi_pada?->toIso8601String(),
         ];
     }
 }
-

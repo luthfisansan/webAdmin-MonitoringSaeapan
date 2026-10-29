@@ -71,6 +71,7 @@ it('completes the full student onboarding, SQ-FFQ verification, and daily progra
         'nama_lengkap' => 'Nadia Putri',
         'email' => 'nadia@siswa.id',
         'password' => 'rahasia123',
+        'password_confirmation' => 'rahasia123',
         'kelas_id' => $kelas->kelas_id,
         'jenis_kelamin' => 'P',
     ])->assertCreated();
@@ -174,7 +175,7 @@ it('completes the full student onboarding, SQ-FFQ verification, and daily progra
         ->getJson("/api/food-record/{$tanggalUji}")
         ->assertSuccessful();
 
-    expect($prefillRes->json('data.tersimpan'))->toBeFalse()
+    expect($prefillRes->json('data.dari_rencana'))->toBeTrue()
         ->and($prefillRes->json('data.items.0.nama_makanan'))->toBe('Nasi Goreng Telur');
 
     // Simpan Food Record aktual
@@ -203,9 +204,9 @@ it('completes the full student onboarding, SQ-FFQ verification, and daily progra
 
     expect((float) $rekapRes->json('data.skor_pengetahuan.skor_pretest'))->toBe(100.0);
 
-    // Simulasikan peserta sudah berada di Minggu ke-3 agar Posttest terbuka
+    // Simulasikan peserta sudah melewati 21 hari program agar Posttest terbuka
     $peserta->update([
-        'tanggal_mulai' => now()->subDays(15)->toDateString(),
+        'tanggal_mulai' => now()->subDays(21)->toDateString(),
     ]);
 
     $posttest = Kuesioner::query()->where('jenis', 'POSTTEST')->firstOrFail();
