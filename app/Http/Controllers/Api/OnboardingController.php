@@ -10,41 +10,38 @@ use App\Models\Kuesioner;
 use App\Models\MateriEdukasi;
 use App\Models\OpsiJawaban;
 use App\Models\ProgresEdukasi;
+use App\Models\Soal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class OnboardingController extends Controller
 {
     public function pretest(Request $request): JsonResponse
     {
-        $siswa = $request->user()?->siswa()->with('statusAkun')->first();
-
-        if (! $siswa || $siswa->statusAkun?->kode !== 'PRETEST') {
-            return response()->json([
-                'data' => null,
-                'message' => 'Pretest hanya dapat diakses oleh siswa berstatus PRETEST.',
-            ], 403);
-        }
-
         $kuesioner = Kuesioner::query()
-            ->with(['soal' => fn ($query) => $query->orderBy('nomor')->with(['opsiJawaban' => fn ($oq) => $oq->orderBy('kode_opsi')])])
+            ->with([
+                'soal' => fn ($query) => $query
+                    ->orderBy('nomor')
+                    ->with(['opsiJawaban' => fn ($oq) => $oq->orderBy('kode_opsi')]),
+            ])
             ->where('jenis', 'PRETEST')
             ->where('aktif', true)
             ->first();
 
-        if (! $kuesioner) {
+        if (! $kuesioner || $kuesioner->soal->isEmpty()) {
             return response()->json([
                 'data' => null,
-                'message' => 'Kuesioner pretest aktif belum tersedia.',
-            ], 404);
+                'message' => 'Tidak ada soal pretest aktif yang tersedia.',
+            ], 422);
         }
 
-        $daftarSoal = $kuesioner->soal->map(fn ($soal): array => [
+        $daftarSoal = $kuesioner->soal->map(fn (Soal $soal): array => [
             'soal_id' => $soal->soal_id,
             'nomor' => $soal->nomor,
             'teks_soal' => $soal->teks_soal,
-            'opsi' => $soal->opsiJawaban->map(fn ($opsi): array => [
+            'opsi' => $soal->opsiJawaban->map(fn (OpsiJawaban $opsi): array => [
                 'opsi_jawaban_id' => $opsi->opsi_jawaban_id,
                 'kode_opsi' => $opsi->kode_opsi,
                 'teks_opsi' => $opsi->teks_opsi,
@@ -54,7 +51,6 @@ class OnboardingController extends Controller
         return response()->json([
             'data' => [
                 'kuesioner_id' => $kuesioner->kuesioner_id,
-                'jenis' => $kuesioner->jenis,
                 'judul' => $kuesioner->judul,
                 'soal' => $daftarSoal,
             ],
@@ -64,53 +60,101 @@ class OnboardingController extends Controller
 
     public function submitPretest(Request $request): JsonResponse
     {
-        $siswa = $request->user()?->siswa()->with('statusAkun')->first();
+        $siswa = $request->user()->siswa()->with('statusAkun')->firstOrFail();
 
-        if (! $siswa || $siswa->statusAkun?->kode !== 'PRETEST') {
+        $sudahMengirimPretest = HasilKuesioner::query()
+            ->where('siswa_id', $siswa->siswa_id)
+            ->whereNotNull('selesai_pada')
+            ->whereHas('kuesioner', fn ($query) => $query->where('jenis', 'PRETEST'))
+            ->exists();
+
+        if ($sudahMengirimPretest) {
+            return response()->json([
+                'code' => 'PRETEST_SUDAH_DIKIRIM',
+                'data' => null,
+                'message' => 'Pretest sudah pernah dikirim dan tidak dapat diulang.',
+            ], 409);
+        }
+
+        $kodeStatusSaatIni = $siswa->statusAkun?->kode;
+        if ($kodeStatusSaatIni !== 'PRETEST') {
+            return response()->json([
+                'code' => 'STATUS_TIDAK_SESUAI',
+                'message' => 'Status akun siswa tidak sesuai untuk mengirim pretest.',
+                'status_akun' => $kodeStatusSaatIni,
+            ], 403);
+        }
+
+        $kuesioner = Kuesioner::query()
+            ->with(['soal.opsiJawaban'])
+            ->where('jenis', 'PRETEST')
+            ->where('aktif', true)
+            ->first();
+
+        if (! $kuesioner || $kuesioner->soal->isEmpty()) {
             return response()->json([
                 'data' => null,
-                'message' => 'Pretest hanya dapat dikirim oleh siswa berstatus PRETEST.',
-            ], 403);
+                'message' => 'Tidak ada soal pretest aktif yang tersedia.',
+            ], 422);
         }
 
         $validated = $request->validate([
             'jawaban' => ['required', 'array', 'min:1'],
-            'jawaban.*.soal_id' => ['required', 'integer', 'exists:soal_m,soal_id'],
-            'jawaban.*.opsi_jawaban_id' => ['required', 'integer', 'exists:opsi_jawaban_m,opsi_jawaban_id'],
+            'jawaban.*.soal_id' => ['required', 'integer', 'distinct'],
+            'jawaban.*.opsi_jawaban_id' => ['required', 'integer'],
         ]);
 
-        $kuesioner = Kuesioner::query()
-            ->with('soal')
-            ->where('jenis', 'PRETEST')
-            ->where('aktif', true)
-            ->firstOrFail();
+        $soalMap = $kuesioner->soal->keyBy('soal_id');
+        $errors = [];
+        $soalTerjawabIds = [];
+        $detailEvaluasi = [];
 
-        $hasil = DB::transaction(function () use ($siswa, $kuesioner, $validated): HasilKuesioner {
-            $jumlahSoal = max(1, $kuesioner->soal->count());
-            $jumlahBenar = 0;
+        foreach (array_values($validated['jawaban']) as $indeks => $item) {
+            $soalId = (int) $item['soal_id'];
+            $opsiId = (int) $item['opsi_jawaban_id'];
 
-            $detailEvaluasi = [];
-            foreach ($validated['jawaban'] as $item) {
-                $opsi = OpsiJawaban::query()
-                    ->where('opsi_jawaban_id', $item['opsi_jawaban_id'])
-                    ->where('soal_id', $item['soal_id'])
-                    ->firstOrFail();
+            /** @var Soal|null $soal */
+            $soal = $soalMap->get($soalId);
 
-                $apakahBenar = (bool) $opsi->getAttribute('benar');
-                if ($apakahBenar) {
-                    $jumlahBenar++;
-                }
+            if (! $soal) {
+                $errors["jawaban.{$indeks}.soal_id"] = ['Soal tidak termasuk dalam kuesioner pretest aktif.'];
 
-                $detailEvaluasi[] = [
-                    'soal_id' => (int) $item['soal_id'],
-                    'opsi_jawaban_id' => (int) $item['opsi_jawaban_id'],
-                    'benar' => $apakahBenar,
-                ];
+                continue;
             }
 
+            $soalTerjawabIds[] = $soalId;
+
+            /** @var OpsiJawaban|null $opsi */
+            $opsi = $soal->opsiJawaban->firstWhere('opsi_jawaban_id', $opsiId);
+
+            if (! $opsi) {
+                $errors["jawaban.{$indeks}.opsi_jawaban_id"] = ['Opsi jawaban bukan milik soal yang dipilih.'];
+
+                continue;
+            }
+
+            $detailEvaluasi[] = [
+                'soal_id' => $soalId,
+                'opsi_jawaban_id' => $opsiId,
+                'benar' => (bool) $opsi->getAttribute('benar'),
+            ];
+        }
+
+        $soalBelumTerjawab = $soalMap->keys()->diff($soalTerjawabIds);
+        if ($soalBelumTerjawab->isNotEmpty()) {
+            $errors['jawaban'] = ['Semua soal pretest wajib dijawab lengkap.'];
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $hasil = DB::transaction(function () use ($siswa, $kuesioner, $detailEvaluasi): HasilKuesioner {
+            $jumlahSoal = count($detailEvaluasi);
+            $jumlahBenar = collect($detailEvaluasi)->where('benar', true)->count();
             $skor = round(($jumlahBenar / $jumlahSoal) * 100, 2);
 
-            // Sesuai aturan skema: buat baris dulu tanpa selesai_pada, simpan jawaban & skor, lalu UPDATE selesai_pada
+            // 1. Buat baris hasil_kuesioner_t terlebih dahulu dengan selesai_pada = null
             $hasilKuesioner = HasilKuesioner::query()->updateOrCreate(
                 [
                     'siswa_id' => $siswa->siswa_id,
@@ -119,27 +163,29 @@ class OnboardingController extends Controller
                 [
                     'mulai_pada' => now(),
                     'selesai_pada' => null,
-                    'jumlah_soal' => $jumlahSoal,
-                    'jumlah_benar' => $jumlahBenar,
-                    'skor' => $skor,
+                    'jumlah_soal' => null,
+                    'jumlah_benar' => null,
+                    'skor' => null,
                 ],
             );
 
+            // 2. Isi jawaban_kuesioner_t beserta kolom benar yang dinilai di server
+            $hasilKuesioner->jawabanKuesioner()->delete();
+
             foreach ($detailEvaluasi as $evaluasi) {
-                JawabanKuesioner::query()->updateOrCreate(
-                    [
-                        'hasil_kuesioner_id' => $hasilKuesioner->hasil_kuesioner_id,
-                        'soal_id' => $evaluasi['soal_id'],
-                    ],
-                    [
-                        'opsi_jawaban_id' => $evaluasi['opsi_jawaban_id'],
-                        'benar' => $evaluasi['benar'],
-                    ],
-                );
+                JawabanKuesioner::query()->create([
+                    'hasil_kuesioner_id' => $hasilKuesioner->hasil_kuesioner_id,
+                    'soal_id' => $evaluasi['soal_id'],
+                    'opsi_jawaban_id' => $evaluasi['opsi_jawaban_id'],
+                    'benar' => $evaluasi['benar'],
+                ]);
             }
 
-            // Memicu trigger hasil_kuesioner_selesai_trg -> PRETEST ke EDUKASI
+            // 3. Simpan skor & TERAKHIR set selesai_pada = now() agar trigger DB memindahkan status ke EDUKASI
             $hasilKuesioner->update([
+                'jumlah_soal' => $jumlahSoal,
+                'jumlah_benar' => $jumlahBenar,
+                'skor' => $skor,
                 'selesai_pada' => now(),
             ]);
 
@@ -150,10 +196,9 @@ class OnboardingController extends Controller
 
         return response()->json([
             'data' => [
-                'hasil_kuesioner_id' => $hasil->hasil_kuesioner_id,
-                'jumlah_soal' => $hasil->jumlah_soal,
-                'jumlah_benar' => $hasil->jumlah_benar,
                 'skor' => (float) $hasil->skor,
+                'jumlah_benar' => (int) $hasil->jumlah_benar,
+                'jumlah_soal' => (int) $hasil->jumlah_soal,
                 'status_akun' => [
                     'kode' => $siswa->statusAkun?->kode,
                     'nama' => $siswa->statusAkun?->nama,
@@ -165,16 +210,17 @@ class OnboardingController extends Controller
 
     public function daftarMateri(Request $request): JsonResponse
     {
-        $siswa = $request->user()?->siswa()->firstOrFail();
+        $siswa = $request->user()->siswa()->with('statusAkun')->firstOrFail();
 
         $bacaMap = BacaMateri::query()
             ->where('siswa_id', $siswa->siswa_id)
             ->get()
             ->keyBy('materi_edukasi_id');
 
-        $materiList = MateriEdukasi::query()
+        $daftarMateri = MateriEdukasi::query()
             ->where('aktif', true)
             ->orderBy('urutan')
+            ->orderBy('materi_edukasi_id')
             ->get()
             ->map(function (MateriEdukasi $materi) use ($bacaMap): array {
                 $baca = $bacaMap->get($materi->materi_edukasi_id);
@@ -184,21 +230,23 @@ class OnboardingController extends Controller
                     'judul' => $materi->judul,
                     'ringkasan' => $materi->ringkasan,
                     'urutan' => $materi->urutan,
-                    'wajib' => $materi->wajib,
+                    'wajib' => (bool) $materi->wajib,
                     'selesai' => (bool) ($baca?->selesai ?? false),
-                    'selesai_pada' => $baca?->selesai_pada?->toIso8601String(),
                 ];
-            });
+            })
+            ->values()
+            ->all();
 
         $progres = ProgresEdukasi::query()->where('siswa_id', $siswa->siswa_id)->first();
 
         return response()->json([
-            'data' => [
-                'materi' => $materiList,
-                'progres' => [
-                    'total_wajib' => $progres?->total_wajib ?? 0,
-                    'dibaca' => $progres?->dibaca ?? 0,
-                    'selesai' => (bool) ($progres?->selesai ?? false),
+            'data' => $daftarMateri,
+            'meta' => [
+                'total_wajib' => (int) ($progres?->total_wajib ?? 0),
+                'dibaca_wajib' => (int) ($progres?->dibaca ?? 0),
+                'status_akun' => [
+                    'kode' => $siswa->statusAkun?->kode,
+                    'nama' => $siswa->statusAkun?->nama,
                 ],
             ],
             'message' => 'Daftar materi edukasi.',
@@ -207,22 +255,16 @@ class OnboardingController extends Controller
 
     public function detailMateri(Request $request, int $materi_edukasi_id): JsonResponse
     {
-        $siswa = $request->user()?->siswa()->firstOrFail();
+        $siswa = $request->user()->siswa()->firstOrFail();
 
         $materi = MateriEdukasi::query()
             ->where('aktif', true)
             ->findOrFail($materi_edukasi_id);
 
-        $baca = BacaMateri::query()->firstOrCreate(
-            [
-                'siswa_id' => $siswa->siswa_id,
-                'materi_edukasi_id' => $materi->materi_edukasi_id,
-            ],
-            [
-                'selesai' => false,
-                'mulai_pada' => now(),
-            ],
-        );
+        $baca = BacaMateri::query()
+            ->where('siswa_id', $siswa->siswa_id)
+            ->where('materi_edukasi_id', $materi->materi_edukasi_id)
+            ->first();
 
         return response()->json([
             'data' => [
@@ -231,9 +273,9 @@ class OnboardingController extends Controller
                 'ringkasan' => $materi->ringkasan,
                 'konten' => $materi->konten,
                 'urutan' => $materi->urutan,
-                'wajib' => $materi->wajib,
-                'selesai' => (bool) $baca->selesai,
-                'selesai_pada' => $baca->selesai_pada?->toIso8601String(),
+                'wajib' => (bool) $materi->wajib,
+                'selesai' => (bool) ($baca?->selesai ?? false),
+                'selesai_pada' => $baca?->selesai_pada?->toIso8601String(),
             ],
             'message' => 'Detail materi edukasi.',
         ]);
@@ -241,39 +283,36 @@ class OnboardingController extends Controller
 
     public function selesaiMateri(Request $request, int $materi_edukasi_id): JsonResponse
     {
-        $siswa = $request->user()?->siswa()->firstOrFail();
+        $siswa = $request->user()->siswa()->firstOrFail();
 
         $materi = MateriEdukasi::query()
             ->where('aktif', true)
             ->findOrFail($materi_edukasi_id);
 
-        BacaMateri::query()->updateOrCreate(
-            [
-                'siswa_id' => $siswa->siswa_id,
-                'materi_edukasi_id' => $materi->materi_edukasi_id,
-            ],
-            [
-                'selesai' => true,
-                'selesai_pada' => now(),
-            ],
-        );
+        $baca = BacaMateri::query()->firstOrNew([
+            'siswa_id' => $siswa->siswa_id,
+            'materi_edukasi_id' => $materi->materi_edukasi_id,
+        ]);
+
+        if (! $baca->exists) {
+            $baca->mulai_pada = now();
+        }
+
+        $baca->selesai = true;
+        $baca->selesai_pada = $baca->selesai_pada ?? now();
+        $baca->save();
 
         $siswa->refresh()->load('statusAkun');
         $progres = ProgresEdukasi::query()->where('siswa_id', $siswa->siswa_id)->first();
 
         return response()->json([
             'data' => [
-                'materi_edukasi_id' => $materi->materi_edukasi_id,
-                'selesai' => true,
-                'progres' => [
-                    'total_wajib' => $progres?->total_wajib ?? 0,
-                    'dibaca' => $progres?->dibaca ?? 0,
-                    'selesai' => (bool) ($progres?->selesai ?? false),
-                ],
                 'status_akun' => [
                     'kode' => $siswa->statusAkun?->kode,
                     'nama' => $siswa->statusAkun?->nama,
                 ],
+                'total_wajib' => (int) ($progres?->total_wajib ?? 0),
+                'dibaca_wajib' => (int) ($progres?->dibaca ?? 0),
             ],
             'message' => 'Materi edukasi ditandai selesai dibaca.',
         ]);
@@ -281,14 +320,14 @@ class OnboardingController extends Controller
 
     public function progresEdukasi(Request $request): JsonResponse
     {
-        $siswa = $request->user()?->siswa()->with('statusAkun')->firstOrFail();
+        $siswa = $request->user()->siswa()->with('statusAkun')->firstOrFail();
         $progres = ProgresEdukasi::query()->where('siswa_id', $siswa->siswa_id)->first();
 
         return response()->json([
             'data' => [
                 'siswa_id' => $siswa->siswa_id,
-                'total_wajib' => $progres?->total_wajib ?? 0,
-                'dibaca' => $progres?->dibaca ?? 0,
+                'total_wajib' => (int) ($progres?->total_wajib ?? 0),
+                'dibaca_wajib' => (int) ($progres?->dibaca ?? 0),
                 'selesai' => (bool) ($progres?->selesai ?? false),
                 'status_akun' => [
                     'kode' => $siswa->statusAkun?->kode,
@@ -299,4 +338,3 @@ class OnboardingController extends Controller
         ]);
     }
 }
-
