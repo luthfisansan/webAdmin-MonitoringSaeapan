@@ -56,6 +56,15 @@
                     >
                         ↓ Unduh food record
                     </button>
+
+                    <a
+                        href="{{ route('admin.detail-siswa.cetak', ['siswa_id' => $siswa->siswa_id, 'minggu' => $mingguFilter]) }}"
+                        target="_blank"
+                        class="dbp-btn-primary"
+                        style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"
+                    >
+                        🖨️ Cetak Laporan Siswa
+                    </a>
                 </div>
             </div>
 

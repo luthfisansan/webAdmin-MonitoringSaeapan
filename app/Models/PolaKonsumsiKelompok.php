@@ -35,6 +35,14 @@ class PolaKonsumsiKelompok extends ReadOnlyModel
     }
 
     /**
+     * @return BelongsTo<Sekolah, $this>
+     */
+    public function sekolah(): BelongsTo
+    {
+        return $this->belongsTo(Sekolah::class, 'sekolah_id', 'sekolah_id');
+    }
+
+    /**
      * @return BelongsTo<KelompokBahan, $this>
      */
     public function kelompokBahan(): BelongsTo

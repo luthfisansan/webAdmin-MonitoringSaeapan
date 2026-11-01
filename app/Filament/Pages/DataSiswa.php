@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Kelas;
 use App\Models\Pengguna;
 use App\Models\Peran;
+use App\Models\Sekolah;
 use App\Models\Siswa;
 use App\Models\SiswaStatus;
 use App\Models\StatusAkun;
@@ -36,6 +37,9 @@ class DataSiswa extends Page
     public string $cari = '';
 
     #[Url(except: null)]
+    public ?int $sekolahId = null;
+
+    #[Url(except: null)]
     public ?int $kelasId = null;
 
     #[Url(except: '')]
@@ -49,6 +53,8 @@ class DataSiswa extends Page
 
     public string $kataSandiBaru = '';
 
+    public ?int $sekolahIdBaru = null;
+
     public ?int $kelasIdBaru = null;
 
     public ?string $jenisKelaminBaru = null;
@@ -57,10 +63,21 @@ class DataSiswa extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        $totalSiswa = SiswaStatus::query()->count();
-        $menungguVerifikasi = SiswaStatus::query()->where('status_akun_kode', 'MENUNGGU_VERIFIKASI')->count();
+        $totalSiswa = SiswaStatus::query()
+            ->when($this->sekolahId, fn ($q) => $q->where('sekolah_id', $this->sekolahId))
+            ->count();
+        $menungguVerifikasi = SiswaStatus::query()
+            ->when($this->sekolahId, fn ($q) => $q->where('sekolah_id', $this->sekolahId))
+            ->where('status_akun_kode', 'MENUNGGU_VERIFIKASI')
+            ->count();
 
         return "{$totalSiswa} siswa · {$menungguVerifikasi} menunggu verifikasi";
+    }
+
+    public function pilihSekolah(?int $sekolahId = null): void
+    {
+        $this->sekolahId = $sekolahId;
+        $this->kelasId = null;
     }
 
     public function pilihKelas(?int $kelasId = null): void
@@ -79,10 +96,24 @@ class DataSiswa extends Page
         $this->namaLengkapBaru = '';
         $this->emailBaru = '';
         $this->kataSandiBaru = '';
-        $this->kelasIdBaru = Kelas::query()->where('aktif', true)->value('kelas_id');
+        $this->sekolahIdBaru = $this->sekolahId ?? Sekolah::query()->where('aktif', true)->orderBy('sekolah_id')->value('sekolah_id');
+        $this->kelasIdBaru = Kelas::query()
+            ->where('aktif', true)
+            ->when($this->sekolahIdBaru, fn ($q) => $q->where('sekolah_id', $this->sekolahIdBaru))
+            ->orderBy('nama_kelas')
+            ->value('kelas_id');
         $this->jenisKelaminBaru = null;
         $this->tanggalLahirBaru = null;
         $this->tampilkanModalTambah = true;
+    }
+
+    public function updatedSekolahIdBaru(?int $sekolahId): void
+    {
+        $this->kelasIdBaru = Kelas::query()
+            ->where('aktif', true)
+            ->when($sekolahId, fn ($q) => $q->where('sekolah_id', $sekolahId))
+            ->orderBy('nama_kelas')
+            ->value('kelas_id');
     }
 
     public function tutupModalTambah(): void
@@ -99,6 +130,15 @@ class DataSiswa extends Page
             'kelasIdBaru' => ['required', 'integer', 'exists:kelas_m,kelas_id'],
             'jenisKelaminBaru' => ['nullable', 'in:L,P'],
             'tanggalLahirBaru' => ['nullable', 'date'],
+        ], [
+            'namaLengkapBaru.required' => 'Nama lengkap siswa wajib diisi.',
+            'emailBaru.required' => 'Alamat email wajib diisi.',
+            'emailBaru.email' => 'Format email tidak valid (contoh: siswa@sekolah.sch.id).',
+            'emailBaru.unique' => 'Alamat email ini sudah terdaftar pada sistem.',
+            'kataSandiBaru.required' => 'Kata sandi wajib diisi.',
+            'kataSandiBaru.min' => 'Kata sandi minimal terdiri dari 6 karakter.',
+            'kelasIdBaru.required' => 'Silakan pilih kelas siswa.',
+            'kelasIdBaru.exists' => 'Kelas yang dipilih tidak ditemukan.',
         ]);
 
         DB::transaction(function () use ($validated): void {
@@ -126,14 +166,15 @@ class DataSiswa extends Page
 
         Notification::make()
             ->success()
-            ->title('Siswa berhasil ditambahkan')
-            ->body('Akun siswa baru telah dibuat dengan status awal Belum Pretest.')
+            ->title('Siswa Berhasil Ditambahkan')
+            ->body("Akun {$validated['namaLengkapBaru']} berhasil didaftarkan. Siswa dapat langsung login menggunakan email tersebut.")
             ->send();
     }
 
     public function unduhDaftarCsv(): StreamedResponse
     {
         $daftarSiswa = SiswaStatus::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->when($this->statusFilter !== '', fn ($query) => $query->where('status_akun_kode', $this->statusFilter))
             ->when($this->cari !== '', fn ($query) => $query->where('nama_lengkap', 'ilike', "%{$this->cari}%"))
@@ -151,6 +192,7 @@ class DataSiswa extends Page
                 'ID Siswa',
                 'Nama Siswa',
                 'Email',
+                'Sekolah',
                 'Kelas',
                 'Pretest',
                 'Progres Edukasi',
@@ -164,6 +206,7 @@ class DataSiswa extends Page
                     $baris->siswa_id,
                     $baris->nama_lengkap,
                     $baris->email,
+                    $baris->nama_sekolah ?? '-',
                     $baris->nama_kelas,
                     $baris->pretest_selesai ? 'Selesai' : 'Belum',
                     "{$baris->materi_wajib_dibaca}/{$baris->materi_wajib_total}",
@@ -184,10 +227,26 @@ class DataSiswa extends Page
      */
     protected function getViewData(): array
     {
-        $daftarKelas = Kelas::query()->where('aktif', true)->orderBy('nama_kelas')->get();
-        $menungguVerifikasiCount = SiswaStatus::query()->where('status_akun_kode', 'MENUNGGU_VERIFIKASI')->count();
+        $daftarSekolah = Sekolah::query()->where('aktif', true)->orderBy('nama_sekolah')->get();
+        $daftarKelas = Kelas::query()
+            ->where('aktif', true)
+            ->when($this->sekolahId, fn ($q) => $q->where('sekolah_id', $this->sekolahId))
+            ->orderBy('nama_kelas')
+            ->get();
+
+        $daftarKelasForm = Kelas::query()
+            ->where('aktif', true)
+            ->when($this->sekolahIdBaru, fn ($q) => $q->where('sekolah_id', $this->sekolahIdBaru))
+            ->orderBy('nama_kelas')
+            ->get();
+
+        $menungguVerifikasiCount = SiswaStatus::query()
+            ->when($this->sekolahId, fn ($q) => $q->where('sekolah_id', $this->sekolahId))
+            ->where('status_akun_kode', 'MENUNGGU_VERIFIKASI')
+            ->count();
 
         $daftarSiswa = SiswaStatus::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->when($this->statusFilter !== '', fn ($query) => $query->where('status_akun_kode', $this->statusFilter))
             ->when($this->cari !== '', function ($query): void {
@@ -201,10 +260,11 @@ class DataSiswa extends Page
             ->get();
 
         return [
+            'daftarSekolah' => $daftarSekolah,
             'daftarKelas' => $daftarKelas,
+            'daftarKelasForm' => $daftarKelasForm,
             'daftarSiswa' => $daftarSiswa,
             'menungguVerifikasiCount' => $menungguVerifikasiCount,
         ];
     }
 }
-

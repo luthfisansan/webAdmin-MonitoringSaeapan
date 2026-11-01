@@ -6,11 +6,13 @@ use App\Filament\Resources\KelasResource\Pages\CreateKelas;
 use App\Filament\Resources\KelasResource\Pages\EditKelas;
 use App\Filament\Resources\KelasResource\Pages\ListKelas;
 use App\Models\Kelas;
+use App\Models\Sekolah;
 use BackedEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
@@ -19,6 +21,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -47,6 +50,14 @@ class KelasResource extends Resource
                 Section::make('Informasi Kelas')
                     ->description('Kelola data kelas dan tahun ajaran untuk registrasi serta pengelompokan siswa.')
                     ->schema([
+                        Select::make('sekolah_id')
+                            ->label('Sekolah')
+                            ->relationship('sekolah', 'nama_sekolah')
+                            ->searchable()
+                            ->preload()
+                            ->required()
+                            ->default(fn () => Sekolah::query()->where('aktif', true)->orderBy('sekolah_id')->value('sekolah_id')),
+
                         TextInput::make('nama_kelas')
                             ->label('Nama kelas')
                             ->placeholder('Contoh: X IPA 1')
@@ -66,7 +77,7 @@ class KelasResource extends Resource
                             ->default(true)
                             ->columnSpanFull(),
                     ])
-                    ->columns(2),
+                    ->columns(3),
             ]);
     }
 
@@ -74,6 +85,13 @@ class KelasResource extends Resource
     {
         return $table
             ->columns([
+                TextColumn::make('sekolah.nama_sekolah')
+                    ->label('Sekolah')
+                    ->badge()
+                    ->color('primary')
+                    ->searchable()
+                    ->sortable(),
+
                 TextColumn::make('nama_kelas')
                     ->label('Nama kelas')
                     ->weight(FontWeight::Bold)
@@ -98,6 +116,11 @@ class KelasResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn (bool $state): string => $state ? 'Aktif' : 'Nonaktif')
                     ->color(fn (bool $state): string => $state ? 'success' : 'gray'),
+            ])
+            ->filters([
+                SelectFilter::make('sekolah_id')
+                    ->label('Sekolah')
+                    ->relationship('sekolah', 'nama_sekolah'),
             ])
             ->defaultSort('nama_kelas')
             ->recordActions([

@@ -6,6 +6,7 @@ use App\Models\Kelas;
 use App\Models\KelompokBahan;
 use App\Models\LaporanKelas;
 use App\Models\PolaKonsumsiKelompok;
+use App\Models\Sekolah;
 use App\Models\SqffqSkor;
 use App\Models\TempatMakan;
 use App\Models\TempatSarapan;
@@ -30,6 +31,9 @@ class Laporan extends Page
 
     protected string $view = 'filament.pages.laporan';
 
+    #[Url(as: 'sekolah_id', except: null)]
+    public ?int $sekolahId = null;
+
     #[Url(as: 'kelas_id', except: null)]
     public ?int $kelasId = null;
 
@@ -41,21 +45,25 @@ class Laporan extends Page
     public function unduhExcelCsv(): StreamedResponse
     {
         $laporanKelas = LaporanKelas::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->orderBy('nama_kelas')
             ->get();
 
         $polaKonsumsi = PolaKonsumsiKelompok::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->orderBy('kelompok_kode')
             ->get();
 
         $tempatSarapan = TempatSarapan::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->get();
 
         $sqffqSkor = SqffqSkor::query()
-            ->with(['siswa.pengguna', 'siswa.kelas', 'sqffq'])
+            ->with(['siswa.pengguna', 'siswa.kelas.sekolah', 'sqffq'])
+            ->when($this->sekolahId, fn ($query) => $query->whereHas('siswa.kelas', fn ($sq) => $sq->where('sekolah_id', $this->sekolahId)))
             ->when($this->kelasId, fn ($query) => $query->whereHas('siswa', fn ($sq) => $sq->where('kelas_id', $this->kelasId)))
             ->get();
 
@@ -143,15 +151,23 @@ class Laporan extends Page
      */
     protected function getViewData(): array
     {
-        $daftarKelas = Kelas::query()->where('aktif', true)->orderBy('nama_kelas')->get();
+        $daftarSekolah = Sekolah::query()->where('aktif', true)->orderBy('nama_sekolah')->get();
+
+        $daftarKelas = Kelas::query()
+            ->where('aktif', true)
+            ->when($this->sekolahId, fn ($q) => $q->where('sekolah_id', $this->sekolahId))
+            ->orderBy('nama_kelas')
+            ->get();
 
         $laporanKelasList = LaporanKelas::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->orderBy('nama_kelas')
             ->get();
 
         $kelompokMaster = KelompokBahan::query()->orderBy('urutan')->get();
         $polaRows = PolaKonsumsiKelompok::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->get()
             ->groupBy('kelompok_bahan_id');
@@ -173,6 +189,7 @@ class Laporan extends Page
 
         $tempatMaster = TempatMakan::query()->orderBy('tempat_makan_id')->get();
         $tempatRows = TempatSarapan::query()
+            ->when($this->sekolahId, fn ($query) => $query->where('sekolah_id', $this->sekolahId))
             ->when($this->kelasId, fn ($query) => $query->where('kelas_id', $this->kelasId))
             ->get();
 
@@ -194,11 +211,13 @@ class Laporan extends Page
         });
 
         $sqffqSkorList = SqffqSkor::query()
-            ->with(['siswa.pengguna', 'siswa.kelas', 'sqffq'])
+            ->with(['siswa.pengguna', 'siswa.kelas.sekolah', 'sqffq'])
+            ->when($this->sekolahId, fn ($query) => $query->whereHas('siswa.kelas', fn ($sq) => $sq->where('sekolah_id', $this->sekolahId)))
             ->when($this->kelasId, fn ($query) => $query->whereHas('siswa', fn ($sq) => $sq->where('kelas_id', $this->kelasId)))
             ->get();
 
         return [
+            'daftarSekolah' => $daftarSekolah,
             'daftarKelas' => $daftarKelas,
             'laporanKelasList' => $laporanKelasList,
             'polaKonsumsiList' => $polaKonsumsiList,
@@ -207,4 +226,3 @@ class Laporan extends Page
         ];
     }
 }
-

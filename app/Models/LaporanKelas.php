@@ -37,4 +37,12 @@ class LaporanKelas extends ReadOnlyModel
     {
         return $this->belongsTo(Kelas::class, 'kelas_id', 'kelas_id');
     }
+
+    /**
+     * @return BelongsTo<Sekolah, $this>
+     */
+    public function sekolah(): BelongsTo
+    {
+        return $this->belongsTo(Sekolah::class, 'sekolah_id', 'sekolah_id');
+    }
 }

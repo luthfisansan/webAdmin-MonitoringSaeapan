@@ -19,16 +19,20 @@ class AntreanVerifikasiWidget extends BaseWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    public ?int $sekolahId = null;
+
     public ?int $kelasId = null;
 
     public function table(Table $table): Table
     {
+        $sekolahId = $this->sekolahId ?? (request()->filled('sekolah_id') ? request()->integer('sekolah_id') : null);
         $kelasId = $this->kelasId ?? (request()->filled('kelas_id') ? request()->integer('kelas_id') : null);
 
         return $table
             ->query(
                 AntreanVerifikasi::query()
                     ->with(['siswa', 'riwayatTerakhir'])
+                    ->when($sekolahId, fn ($query) => $query->where('sekolah_id', $sekolahId))
                     ->when($kelasId, fn ($query) => $query->whereHas('siswa', fn ($siswaQuery) => $siswaQuery->where('kelas_id', $kelasId)))
             )
             ->heading(new HtmlString('Antrean verifikasi <span class="sr-only">Antrean Verifikasi</span>'))
@@ -43,6 +47,12 @@ class AntreanVerifikasiWidget extends BaseWidget
                 TextColumn::make('nama_lengkap')
                     ->label('Nama siswa')
                     ->weight(FontWeight::Bold)
+                    ->sortable(false),
+
+                TextColumn::make('nama_sekolah')
+                    ->label('Sekolah')
+                    ->badge()
+                    ->color('gray')
                     ->sortable(false),
 
                 TextColumn::make('nama_kelas')
@@ -79,7 +89,7 @@ class AntreanVerifikasiWidget extends BaseWidget
             ])
             ->paginated(false)
             ->emptyStateHeading('Belum ada siswa dalam antrean verifikasi')
-            ->emptyStateDescription('Siswa yang telah menyelesaikan pretest dan membaca seluruh materi edukasi wajib akan tampil di tabel ini.')
+            ->emptyStateDescription('Semua siswa yang telah menyelesaikan pretest dan materi edukasi wajib telah diverifikasi. Siswa baru yang siap wawancara SQ-FFQ akan otomatis tampil di sini.')
             ->emptyStateIcon('heroicon-o-clipboard-document-check');
     }
 }

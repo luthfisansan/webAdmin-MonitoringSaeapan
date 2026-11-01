@@ -133,12 +133,15 @@ class VerifikasiSqffq extends Page
             return 'Pilih responden siswa untuk memulai atau melanjutkan wawancara SQ-FFQ';
         }
 
-        $siswa = Siswa::query()->with(['pengguna', 'kelas'])->find($this->siswaId);
+        $siswa = Siswa::query()->with(['pengguna', 'kelas.sekolah'])->find($this->siswaId);
         if (! $siswa) {
             return 'Pilih responden siswa untuk memulai atau melanjutkan wawancara SQ-FFQ';
         }
 
-        return "Responden: {$siswa->pengguna?->nama_lengkap} · Kelas {$siswa->kelas?->nama_kelas} · diisi petugas lewat wawancara";
+        $namaSekolah = $siswa->kelas?->sekolah?->nama_sekolah;
+        $labelSekolah = $namaSekolah ? "{$namaSekolah} · " : '';
+
+        return "Responden: {$siswa->pengguna?->nama_lengkap} · {$labelSekolah}Kelas {$siswa->kelas?->nama_kelas} · diisi petugas lewat wawancara";
     }
 
     public function simpanDraf(): void
@@ -149,10 +152,12 @@ class VerifikasiSqffq extends Page
 
         $this->simpanKeDatabase(selesaikan: false);
 
+        $namaSiswa = $this->siswaAktif?->pengguna?->nama_lengkap ?? 'siswa';
+
         Notification::make()
             ->success()
-            ->title('Draf SQ-FFQ disimpan')
-            ->body('Data wawancara SQ-FFQ berhasil disimpan sebagai draf.')
+            ->title('Draf Berhasil Disimpan')
+            ->body("Data wawancara SQ-FFQ untuk {$namaSiswa} tersimpan aman dan dapat Anda lanjutkan kapan saja.")
             ->send();
     }
 
@@ -169,8 +174,8 @@ class VerifikasiSqffq extends Page
         if ($terisiCount === 0) {
             Notification::make()
                 ->warning()
-                ->title('Belum ada item yang diisi')
-                ->body('Silakan isi frekuensi konsumsi minimal satu bahan makanan sebelum menyelesaikan SQ-FFQ.')
+                ->title('Data Belum Lengkap')
+                ->body('Mohon isi frekuensi konsumsi minimal pada satu bahan makanan sebelum menyelesaikan verifikasi.')
                 ->send();
 
             return;
@@ -178,10 +183,12 @@ class VerifikasiSqffq extends Page
 
         $this->simpanKeDatabase(selesaikan: true);
 
+        $namaSiswa = $this->siswaAktif?->pengguna?->nama_lengkap ?? 'siswa';
+
         Notification::make()
             ->success()
-            ->title('SQ-FFQ selesai & akun siswa diverifikasi')
-            ->body('SQ-FFQ tahap '.$this->tahap.' telah diselesaikan. Status akun siswa diperbarui oleh database.')
+            ->title('Verifikasi Berhasil Diselesaikan')
+            ->body("Wawancara SQ-FFQ untuk {$namaSiswa} telah selesai. Akun siswa otomatis berstatus TERVERIFIKASI dan dapat langsung mengakses aplikasi mobile.")
             ->send();
     }
 
@@ -261,7 +268,7 @@ class VerifikasiSqffq extends Page
         $semuaSiswaList = SiswaStatus::query()->orderBy('nama_lengkap')->get();
 
         $siswaAktif = $this->siswaId
-            ? Siswa::query()->with(['pengguna', 'kelas', 'statusAkun'])->find($this->siswaId)
+            ? Siswa::query()->with(['pengguna', 'kelas.sekolah', 'statusAkun'])->find($this->siswaId)
             : null;
 
         $kelompokList = KelompokBahan::query()
@@ -312,4 +319,3 @@ class VerifikasiSqffq extends Page
         ];
     }
 }
-

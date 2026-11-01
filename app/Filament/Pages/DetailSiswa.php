@@ -73,20 +73,23 @@ class DetailSiswa extends Page
             return null;
         }
 
-        $siswa = Siswa::query()->with(['kelas', 'pesertaProgram.program'])->find($this->siswaId);
+        $siswa = Siswa::query()->with(['kelas.sekolah', 'pesertaProgram.program'])->find($this->siswaId);
         if (! $siswa) {
             return null;
         }
+
+        $namaSekolah = $siswa->kelas?->sekolah?->nama_sekolah;
+        $labelSekolah = $namaSekolah ? "{$namaSekolah} · " : '';
 
         $pesertaAktif = $siswa->pesertaProgram->sortByDesc('tanggal_mulai')->first();
         if ($pesertaAktif) {
             $mulai = $pesertaAktif->tanggal_mulai?->translatedFormat('d M');
             $selesai = $pesertaAktif->tanggal_selesai?->translatedFormat('d M Y');
 
-            return "Kelas {$siswa->kelas?->nama_kelas} · Program {$mulai} – {$selesai}";
+            return "{$labelSekolah}Kelas {$siswa->kelas?->nama_kelas} · Program {$mulai} – {$selesai}";
         }
 
-        return "Kelas {$siswa->kelas?->nama_kelas} · Belum terdaftar pada periode program";
+        return "{$labelSekolah}Kelas {$siswa->kelas?->nama_kelas} · Belum terdaftar pada periode program";
     }
 
     public function unduhFoodRecordCsv(): StreamedResponse
@@ -152,7 +155,7 @@ class DetailSiswa extends Page
         $siswa = $this->siswaId
             ? Siswa::query()->with([
                 'pengguna',
-                'kelas',
+                'kelas.sekolah',
                 'statusAkun',
                 'pesertaProgram.program',
                 'bacaMateri.materiEdukasi',
@@ -236,4 +239,3 @@ class DetailSiswa extends Page
         ];
     }
 }
-

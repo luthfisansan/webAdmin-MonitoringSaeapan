@@ -27,6 +27,8 @@ class StatistikSiswaOverview extends BaseWidget
 
     public ?int $tahun = null;
 
+    public ?int $sekolahId = null;
+
     public ?int $kelasId = null;
 
     /**
@@ -36,21 +38,25 @@ class StatistikSiswaOverview extends BaseWidget
     {
         $bulan = Dashboard::resolveBulan($this->bulan);
         $tahun = Dashboard::resolveTahun($this->tahun);
+        $sekolahId = $this->sekolahId ?? (request()->filled('sekolah_id') ? request()->integer('sekolah_id') : null);
         $kelasId = $this->kelasId ?? (request()->filled('kelas_id') ? request()->integer('kelas_id') : null);
 
         $namaBulan = Dashboard::daftarBulan()[$bulan] ?? 'Oktober';
         $namaBulanSingkat = Dashboard::daftarBulanSingkat()[$bulan] ?? 'Okt';
 
         $totalSiswa = Siswa::query()
+            ->when($sekolahId, fn ($query) => $query->whereHas('kelas', fn ($kq) => $kq->where('sekolah_id', $sekolahId)))
             ->when($kelasId, fn ($query) => $query->where('kelas_id', $kelasId))
             ->count();
 
         $totalKelas = Kelas::query()
             ->where('aktif', true)
+            ->when($sekolahId, fn ($query) => $query->where('sekolah_id', $sekolahId))
             ->when($kelasId, fn ($query) => $query->whereKey($kelasId))
             ->count();
 
         $statusBaseQuery = SiswaStatus::query()
+            ->when($sekolahId, fn ($query) => $query->where('sekolah_id', $sekolahId))
             ->when($kelasId, fn ($query) => $query->where('kelas_id', $kelasId));
 
         $jumlahPretest = (clone $statusBaseQuery)->where('status_akun_kode', 'PRETEST')->count();
@@ -60,6 +66,7 @@ class StatistikSiswaOverview extends BaseWidget
 
         $jumlahSqffqSelesai = Sqffq::query()
             ->where('status', 'SELESAI')
+            ->when($sekolahId, fn ($query) => $query->whereHas('siswa.kelas', fn ($kq) => $kq->where('sekolah_id', $sekolahId)))
             ->when($kelasId, fn ($query) => $query->whereHas('siswa', fn ($siswaQuery) => $siswaQuery->where('kelas_id', $kelasId)))
             ->count();
 
@@ -69,6 +76,7 @@ class StatistikSiswaOverview extends BaseWidget
 
         $kepatuhanBulanQuery = KepatuhanHarian::query()
             ->whereBetween('tanggal', [$awalBulan->toDateString(), $akhirBulan->toDateString()])
+            ->when($sekolahId, fn ($query) => $query->whereHas('siswa.kelas', fn ($kq) => $kq->where('sekolah_id', $sekolahId)))
             ->when($kelasId, fn ($query) => $query->whereHas('siswa', fn ($siswaQuery) => $siswaQuery->where('kelas_id', $kelasId)));
 
         $totalHariBulan = (clone $kepatuhanBulanQuery)->count();
@@ -87,6 +95,7 @@ class StatistikSiswaOverview extends BaseWidget
 
             $kepatuhanMingguQuery = KepatuhanHarian::query()
                 ->whereBetween('tanggal', [$tanggalMulaiMinggu, $tanggalSelesaiMinggu])
+                ->when($sekolahId, fn ($query) => $query->whereHas('siswa.kelas', fn ($kq) => $kq->where('sekolah_id', $sekolahId)))
                 ->when($kelasId, fn ($query) => $query->whereHas('siswa', fn ($siswaQuery) => $siswaQuery->where('kelas_id', $kelasId)));
 
             $totalHariMinggu = (clone $kepatuhanMingguQuery)->count();
@@ -110,6 +119,7 @@ class StatistikSiswaOverview extends BaseWidget
         }
 
         $skorQuery = SkorPengetahuan::query()
+            ->when($sekolahId, fn ($query) => $query->whereHas('siswa.kelas', fn ($kq) => $kq->where('sekolah_id', $sekolahId)))
             ->when($kelasId, fn ($query) => $query->whereHas('siswa', fn ($siswaQuery) => $siswaQuery->where('kelas_id', $kelasId)));
 
         $rataPretest = (int) round((float) ((clone $skorQuery)->avg('skor_pretest') ?? 0));

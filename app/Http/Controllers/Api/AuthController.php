@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\Pengguna;
 use App\Models\Peran;
+use App\Models\Sekolah;
 use App\Models\Siswa;
 use App\Models\StatusAkun;
 use Illuminate\Http\JsonResponse;
@@ -17,12 +18,38 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function kelas(): JsonResponse
+    public function sekolah(): JsonResponse
     {
-        $daftarKelas = Kelas::query()
+        $daftarSekolah = Sekolah::query()
             ->where('aktif', true)
+            ->orderBy('nama_sekolah')
+            ->get(['sekolah_id', 'nama_sekolah', 'npsn', 'alamat']);
+
+        return response()->json([
+            'data' => $daftarSekolah,
+            'message' => 'Daftar sekolah aktif.',
+        ]);
+    }
+
+    public function kelas(Request $request): JsonResponse
+    {
+        $sekolahId = $request->filled('sekolah_id') ? $request->integer('sekolah_id') : null;
+
+        $daftarKelas = Kelas::query()
+            ->with('sekolah:sekolah_id,nama_sekolah')
+            ->where('aktif', true)
+            ->when($sekolahId, fn ($query) => $query->where('sekolah_id', $sekolahId))
             ->orderBy('nama_kelas')
-            ->get(['kelas_id', 'nama_kelas', 'tahun_ajaran']);
+            ->get(['kelas_id', 'sekolah_id', 'nama_kelas', 'tahun_ajaran'])
+            ->map(fn (Kelas $kelas) => [
+                'kelas_id' => $kelas->kelas_id,
+                'nama_kelas' => $kelas->nama_kelas,
+                'tahun_ajaran' => $kelas->tahun_ajaran,
+                'sekolah' => $kelas->sekolah ? [
+                    'sekolah_id' => $kelas->sekolah->sekolah_id,
+                    'nama_sekolah' => $kelas->sekolah->nama_sekolah,
+                ] : null,
+            ]);
 
         return response()->json([
             'data' => $daftarKelas,
@@ -81,7 +108,7 @@ class AuthController extends Controller
             return $penggunaBaru;
         });
 
-        $pengguna->load(['peran', 'siswa.statusAkun', 'siswa.kelas']);
+        $pengguna->load(['peran', 'siswa.statusAkun', 'siswa.kelas.sekolah']);
         $token = $pengguna->createToken('mobile')->plainTextToken;
 
         return response()->json([
@@ -103,7 +130,7 @@ class AuthController extends Controller
         $emailNormalized = strtolower(trim($validated['email']));
 
         $pengguna = Pengguna::query()
-            ->with(['peran', 'siswa.statusAkun', 'siswa.kelas'])
+            ->with(['peran', 'siswa.statusAkun', 'siswa.kelas.sekolah'])
             ->whereRaw('lower(email) = ?', [$emailNormalized])
             ->first();
 
@@ -156,7 +183,7 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         /** @var Pengguna $pengguna */
-        $pengguna = $request->user()->fresh(['peran', 'siswa.statusAkun', 'siswa.kelas']);
+        $pengguna = $request->user()->fresh(['peran', 'siswa.statusAkun', 'siswa.kelas.sekolah']);
 
         if (! $pengguna || ! $pengguna->aktif) {
             return response()->json([
@@ -179,6 +206,7 @@ class AuthController extends Controller
      *     nama_lengkap: string,
      *     email: string,
      *     siswa_id: int|null,
+     *     sekolah: array{sekolah_id: int, nama_sekolah: string}|null,
      *     kelas: array{kelas_id: int, nama_kelas: string}|null,
      *     status_akun: array{kode: string, nama: string}|null,
      *     terverifikasi_pada: string|null
@@ -187,12 +215,17 @@ class AuthController extends Controller
     protected function formatMe(Pengguna $pengguna): array
     {
         $siswa = $pengguna->siswa;
+        $sekolah = $siswa?->kelas?->sekolah;
 
         return [
             'pengguna_id' => $pengguna->pengguna_id,
             'nama_lengkap' => $pengguna->nama_lengkap,
             'email' => $pengguna->email,
             'siswa_id' => $siswa?->siswa_id,
+            'sekolah' => $sekolah ? [
+                'sekolah_id' => $sekolah->sekolah_id,
+                'nama_sekolah' => $sekolah->nama_sekolah,
+            ] : null,
             'kelas' => $siswa?->kelas ? [
                 'kelas_id' => $siswa->kelas->kelas_id,
                 'nama_kelas' => $siswa->kelas->nama_kelas,

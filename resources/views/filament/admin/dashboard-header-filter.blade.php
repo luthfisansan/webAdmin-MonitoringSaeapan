@@ -36,6 +36,25 @@
             </svg>
         </label>
 
+        <label class="dbp-class-filter-pill" title="Filter sekolah">
+            <select
+                name="sekolah_id"
+                aria-label="Filter sekolah"
+                class="dbp-filter-select"
+                onchange="this.form.submit()"
+            >
+                <option value="">Semua sekolah</option>
+                @foreach ($daftarSekolah as $sekolahItem)
+                    <option value="{{ $sekolahItem->sekolah_id }}" @selected($sekolahIdAktif === $sekolahItem->sekolah_id)>
+                        {{ $sekolahItem->nama_sekolah }}
+                    </option>
+                @endforeach
+            </select>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m5.5 7.5 4.5 4.5 4.5-4.5" />
+            </svg>
+        </label>
+
         <label class="dbp-class-filter-pill" title="Filter kelas">
             <select
                 name="kelas_id"

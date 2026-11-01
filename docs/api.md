@@ -41,12 +41,43 @@ Aplikasi Flutter tidak boleh menyimpan "langkah terakhir" secara lokal. Gunakan 
 
 ---
 
-## A. Autentikasi & Profil
+## A. Master Data & Autentikasi
 
-### 1. Daftar Kelas Aktif (Publik)
+### 1. Daftar Sekolah Aktif (Publik)
+
+- **Method & Path**: `GET /api/sekolah`
+- **Auth**: Tidak diperlukan (Publik)
+- **Request Body**: Tidak ada
+
+#### Contoh Respons Sukses (`200 OK`)
+```json
+{
+  "data": [
+    {
+      "sekolah_id": 1,
+      "nama_sekolah": "SMP Negeri 1 (Sekolah Utama)",
+      "npsn": "20100001",
+      "alamat": "Jl. Pendidikan No. 1"
+    },
+    {
+      "sekolah_id": 2,
+      "nama_sekolah": "SMP Negeri 2",
+      "npsn": "20100002",
+      "alamat": "Jl. Merdeka No. 45"
+    }
+  ],
+  "message": "Daftar sekolah aktif."
+}
+```
+
+---
+
+### 2. Daftar Kelas Aktif (Publik)
 
 - **Method & Path**: `GET /api/kelas`
 - **Auth**: Tidak diperlukan (Publik)
+- **Query Parameters**:
+  - `sekolah_id` (`integer`, opsional): Memfilter kelas berdasarkan ID sekolah.
 - **Request Body**: Tidak ada
 
 #### Contoh Respons Sukses (`200 OK`)
@@ -56,12 +87,20 @@ Aplikasi Flutter tidak boleh menyimpan "langkah terakhir" secara lokal. Gunakan 
     {
       "kelas_id": 1,
       "nama_kelas": "8A",
-      "tahun_ajaran": "2025/2026"
+      "tahun_ajaran": "2025/2026",
+      "sekolah": {
+        "sekolah_id": 1,
+        "nama_sekolah": "SMP Negeri 1 (Sekolah Utama)"
+      }
     },
     {
       "kelas_id": 2,
       "nama_kelas": "8B",
-      "tahun_ajaran": "2025/2026"
+      "tahun_ajaran": "2025/2026",
+      "sekolah": {
+        "sekolah_id": 1,
+        "nama_sekolah": "SMP Negeri 1 (Sekolah Utama)"
+      }
     }
   ],
   "message": "Daftar kelas aktif."
@@ -70,7 +109,7 @@ Aplikasi Flutter tidak boleh menyimpan "langkah terakhir" secara lokal. Gunakan 
 
 ---
 
-### 2. Registrasi Siswa (Publik)
+### 3. Registrasi Siswa (Publik)
 
 Membuat akun `pengguna_m` (peran `SISWA`, password di-*hash* bcrypt) dan profil `siswa_m` (status awal `PRETEST`) dalam satu transaksi database, lalu mengembalikan token Sanctum beserta data profil `/me`.
 
@@ -110,6 +149,10 @@ Membuat akun `pengguna_m` (peran `SISWA`, password di-*hash* bcrypt) dan profil 
       "nama_lengkap": "Siti Aisyah",
       "email": "siti.aisyah@siswa.id",
       "siswa_id": 5,
+      "sekolah": {
+        "sekolah_id": 1,
+        "nama_sekolah": "SMP Negeri 1 (Sekolah Utama)"
+      },
       "kelas": {
         "kelas_id": 1,
         "nama_kelas": "8A"
@@ -140,7 +183,7 @@ Membuat akun `pengguna_m` (peran `SISWA`, password di-*hash* bcrypt) dan profil 
 
 ---
 
-### 3. Login Siswa (Publik, Rate Limited)
+### 4. Login Siswa (Publik, Rate Limited)
 
 Autentikasi khusus akun berperan `SISWA` yang aktif. Akun `ADMIN` dan `PETUGAS` ditolak karena hanya login melalui `/admin`. Memiliki *rate limit* **5 percobaan per menit per kombinasi email + IP**.
 
@@ -165,6 +208,10 @@ Autentikasi khusus akun berperan `SISWA` yang aktif. Akun `ADMIN` dan `PETUGAS` 
       "nama_lengkap": "Siti Aisyah",
       "email": "siti.aisyah@siswa.id",
       "siswa_id": 5,
+      "sekolah": {
+        "sekolah_id": 1,
+        "nama_sekolah": "SMP Negeri 1 (Sekolah Utama)"
+      },
       "kelas": {
         "kelas_id": 1,
         "nama_kelas": "8A"
@@ -205,7 +252,7 @@ Autentikasi khusus akun berperan `SISWA` yang aktif. Akun `ADMIN` dan `PETUGAS` 
 
 ---
 
-### 4. Logout Siswa
+### 5. Logout Siswa
 
 - **Method & Path**: `POST /api/auth/logout`
 - **Auth**: `Bearer <token>` (`auth:sanctum`)
@@ -221,7 +268,7 @@ Autentikasi khusus akun berperan `SISWA` yang aktif. Akun `ADMIN` dan `PETUGAS` 
 
 ---
 
-### 5. Profil & Status Akun Siswa (`/api/me`)
+### 6. Profil & Status Akun Siswa (`/api/me`)
 
 - **Method & Path**: `GET /api/me`
 - **Auth**: `Bearer <token>` (`auth:sanctum`)
@@ -235,6 +282,10 @@ Autentikasi khusus akun berperan `SISWA` yang aktif. Akun `ADMIN` dan `PETUGAS` 
     "nama_lengkap": "Siti Aisyah",
     "email": "siti.aisyah@siswa.id",
     "siswa_id": 5,
+    "sekolah": {
+      "sekolah_id": 1,
+      "nama_sekolah": "SMP Negeri 1 (Sekolah Utama)"
+    },
     "kelas": {
       "kelas_id": 1,
       "nama_kelas": "8A"

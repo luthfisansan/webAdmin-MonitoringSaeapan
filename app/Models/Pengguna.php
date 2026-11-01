@@ -31,6 +31,7 @@ class Pengguna extends Authenticatable implements FilamentUser, HasName
 
     protected $fillable = [
         'peran_id',
+        'sekolah_id',
         'email',
         'kata_sandi_hash',
         'nama_lengkap',
@@ -79,6 +80,14 @@ class Pengguna extends Authenticatable implements FilamentUser, HasName
     {
         return (bool) $this->aktif
             && in_array($this->peran?->kode, ['ADMIN', 'PETUGAS'], true);
+    }
+
+    /**
+     * @return BelongsTo<Sekolah, $this>
+     */
+    public function sekolah(): BelongsTo
+    {
+        return $this->belongsTo(Sekolah::class, 'sekolah_id', 'sekolah_id');
     }
 
     /**
