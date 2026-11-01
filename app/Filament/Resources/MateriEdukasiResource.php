@@ -11,6 +11,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -22,6 +23,7 @@ use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
 use UnitEnum;
 
 class MateriEdukasiResource extends Resource
@@ -47,7 +49,7 @@ class MateriEdukasiResource extends Resource
         return $schema
             ->components([
                 Section::make('Konten Materi Edukasi')
-                    ->description('Materi yang wajib dibaca oleh siswa setelah menyelesaikan pretest sebelum lanjut ke verifikasi SQ-FFQ.')
+                    ->description('Materi dapat disajikan dalam bentuk teks bacaan, dokumen file PDF langsung, atau kombinasi keduanya.')
                     ->schema([
                         TextInput::make('judul')
                             ->label('Judul materi')
@@ -69,9 +71,20 @@ class MateriEdukasiResource extends Resource
                             ->maxLength(255)
                             ->columnSpanFull(),
 
+                        FileUpload::make('file_pdf')
+                            ->label('File Dokumen PDF')
+                            ->helperText('Unggah materi langsung dalam format PDF (maks. 10MB). Siswa dapat membaca dan membuka dokumen ini langsung di aplikasi.')
+                            ->acceptedFileTypes(['application/pdf'])
+                            ->disk('public')
+                            ->directory('materi-pdf')
+                            ->maxSize(10240)
+                            ->openable()
+                            ->downloadable()
+                            ->columnSpanFull(),
+
                         RichEditor::make('konten')
-                            ->label('Isi materi edukasi')
-                            ->required()
+                            ->label('Isi Materi (Teks)')
+                            ->helperText('Isi materi dalam format teks/artikel. Opsional jika sudah mengunggah file PDF di atas.')
                             ->columnSpanFull(),
 
                         Toggle::make('wajib')
@@ -101,6 +114,37 @@ class MateriEdukasiResource extends Resource
                     ->description(fn (MateriEdukasi $record): ?string => $record->ringkasan)
                     ->searchable()
                     ->sortable(),
+
+                TextColumn::make('format')
+                    ->label('Format')
+                    ->state(function (MateriEdukasi $record): string {
+                        $hasText = ! empty(trim(strip_tags((string) $record->konten)));
+                        $hasPdf = ! empty($record->file_pdf);
+
+                        if ($hasText && $hasPdf) {
+                            return 'Teks & PDF';
+                        }
+
+                        if ($hasPdf) {
+                            return 'File PDF';
+                        }
+
+                        return 'Teks';
+                    })
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'Teks & PDF' => 'info',
+                        'File PDF' => 'primary',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('file_pdf')
+                    ->label('File PDF')
+                    ->formatStateUsing(fn ($state) => $state ? 'Buka Dokumen' : '-')
+                    ->url(fn (MateriEdukasi $record) => $record->file_pdf ? Storage::disk('public')->url($record->file_pdf) : null)
+                    ->openUrlInNewTab()
+                    ->icon(fn ($state) => $state ? Heroicon::OutlinedDocumentArrowDown : null)
+                    ->color(fn ($state) => $state ? 'primary' : 'gray'),
 
                 TextColumn::make('wajib')
                     ->label('Sifat')

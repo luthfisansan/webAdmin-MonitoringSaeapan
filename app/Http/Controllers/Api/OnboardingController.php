@@ -14,6 +14,7 @@ use App\Models\Soal;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class OnboardingController extends Controller
@@ -229,6 +230,7 @@ class OnboardingController extends Controller
                     'materi_edukasi_id' => $materi->materi_edukasi_id,
                     'judul' => $materi->judul,
                     'ringkasan' => $materi->ringkasan,
+                    'file_pdf' => $materi->file_pdf ? Storage::disk('public')->url($materi->file_pdf) : null,
                     'urutan' => $materi->urutan,
                     'wajib' => (bool) $materi->wajib,
                     'selesai' => (bool) ($baca?->selesai ?? false),
@@ -272,6 +274,7 @@ class OnboardingController extends Controller
                 'judul' => $materi->judul,
                 'ringkasan' => $materi->ringkasan,
                 'konten' => $materi->konten,
+                'file_pdf' => $materi->file_pdf ? Storage::disk('public')->url($materi->file_pdf) : null,
                 'urutan' => $materi->urutan,
                 'wajib' => (bool) $materi->wajib,
                 'selesai' => (bool) ($baca?->selesai ?? false),

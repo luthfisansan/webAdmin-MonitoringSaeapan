@@ -95,7 +95,7 @@ it('dynamically splits selected month and year into weeks and calculates monthly
         'kelasId' => $kelas->kelas_id,
     ])
         ->assertSee('Februari 2026')
-        ->assertSee('rata-rata februari 2026')
+        ->assertSee('rata-rata kesesuaian februari 2026')
         ->assertSee('50%')
         ->assertSee('100%')
         ->assertSee('1–7 Feb')

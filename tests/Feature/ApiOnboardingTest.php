@@ -103,6 +103,7 @@ it('completes the full onboarding flow via DB triggers: register -> pretest -> E
                 'judul',
                 'ringkasan',
                 'konten',
+                'file_pdf',
                 'urutan',
                 'wajib',
                 'selesai',

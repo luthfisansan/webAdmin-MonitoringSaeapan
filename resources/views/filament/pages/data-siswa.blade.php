@@ -174,7 +174,7 @@
                             <th>Kelas</th>
                             <th>Pretest</th>
                             <th>SQ-FFQ</th>
-                            <th>Kepatuhan rencana</th>
+                            <th>Kecenderungan sarapan</th>
                             <th>Status akun</th>
                             <th>Aksi</th>
                         </tr>

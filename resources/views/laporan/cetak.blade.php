@@ -427,7 +427,7 @@
             <div class="doc-logo">BP</div>
             <div class="doc-title-block">
                 <div class="doc-title-institution">{{ $sekolahTerpilih ? $sekolahTerpilih->nama_sekolah : 'Program Studi Gizi' }} · Laporan Penelitian Intervensi Gizi Siswa</div>
-                <h1 class="doc-title-main">DIGITAL BREAKFAST PLANNER — REKAP MONITORING SARAPAN</h1>
+                <h1 class="doc-title-main">DIGITAL BREAKFAST PLANNER — REKAP PERUBAHAN SIKAP & SARAPAN</h1>
                 <div class="doc-title-sub">Monitoring Rencana Sarapan Harian, Food Record, Pengetahuan Gizi & Konsumsi SQ-FFQ</div>
             </div>
         </header>
@@ -456,11 +456,11 @@
             </div>
         </div>
 
-        {{-- Bagian 1: Kepatuhan Sarapan & Pengetahuan Gizi per Kelas --}}
+        {{-- Bagian 1: Kecenderungan Sarapan (Sikap Konatif) & Pengetahuan Gizi per Kelas --}}
         <section class="report-section">
             <div class="section-header">
-                <h2 class="section-title">1. Pengetahuan Gizi & Kepatuhan Sarapan Mingguan per Kelas</h2>
-                <span class="section-note">Sumber data: Laporan Kelas View (Hasil Kuesioner & Kepatuhan Mingguan)</span>
+                <h2 class="section-title">1. Pengetahuan Gizi & Kecenderungan Sarapan Mingguan (Sikap Konatif) per Kelas</h2>
+                <span class="section-note">Sumber data: Laporan Kelas View (Hasil Kuesioner & Pemantauan Sikap Konatif Mingguan)</span>
             </div>
 
             <table class="report-table">
@@ -470,9 +470,9 @@
                         <th class="text-center" style="width: 12%;">Siswa</th>
                         <th class="text-center" style="width: 15%;">Rata Pretest</th>
                         <th class="text-center" style="width: 15%;">Rata Posttest</th>
-                        <th class="text-center" style="width: 11%;">Patuh M1</th>
-                        <th class="text-center" style="width: 11%;">Patuh M2</th>
-                        <th class="text-center" style="width: 11%;">Patuh M3</th>
+                        <th class="text-center" style="width: 11%;">Sesuai M1</th>
+                        <th class="text-center" style="width: 11%;">Sesuai M2</th>
+                        <th class="text-center" style="width: 11%;">Sesuai M3</th>
                     </tr>
                 </thead>
                 <tbody>

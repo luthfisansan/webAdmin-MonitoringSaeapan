@@ -39,7 +39,7 @@ class Laporan extends Page
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Rekap seluruh peserta · pengetahuan gizi, kepatuhan rencana, pola konsumsi SQ-FFQ, dan tempat sarapan';
+        return 'Rekap seluruh peserta · pengetahuan gizi, kecenderungan perilaku sarapan (sikap konatif), pola konsumsi SQ-FFQ, dan tempat sarapan';
     }
 
     public function unduhExcelCsv(): StreamedResponse

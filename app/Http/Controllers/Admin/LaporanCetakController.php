@@ -176,4 +176,97 @@ class LaporanCetakController extends Controller
             'tanggalCetak' => Carbon::now()->translatedFormat('d F Y, H:i'),
         ]);
     }
+
+    public function cetakKelas(Request $request): View
+    {
+        $user = $request->user();
+        if (! $user || ! in_array($user->peran?->kode, ['ADMIN', 'PETUGAS'], true)) {
+            abort(403, 'Akses khusus administrator dan petugas gizi.');
+        }
+
+        $kelasId = $request->integer('kelas_id');
+        $kelas = Kelas::query()->with('sekolah')->findOrFail($kelasId);
+
+        $daftarSiswa = Siswa::query()
+            ->with(['pengguna', 'statusAkun', 'skorPengetahuan', 'kepatuhanMingguan'])
+            ->where('kelas_id', $kelas->kelas_id)
+            ->orderBy('siswa_id')
+            ->get()
+            ->sortBy('nama_lengkap', SORT_NATURAL | SORT_FLAG_CASE);
+
+        $siswaIds = $daftarSiswa->pluck('siswa_id')->all();
+        $sqffqMap = SqffqSkor::query()
+            ->whereIn('siswa_id', $siswaIds)
+            ->get()
+            ->keyBy('siswa_id');
+
+        $siswaRows = $daftarSiswa->map(function (Siswa $siswa) use ($sqffqMap): array {
+            $km1 = $siswa->kepatuhanMingguan->firstWhere('minggu_ke', 1);
+            $km2 = $siswa->kepatuhanMingguan->firstWhere('minggu_ke', 2);
+            $km3 = $siswa->kepatuhanMingguan->firstWhere('minggu_ke', 3);
+
+            $validMingguan = collect([
+                $km1?->persen_kepatuhan,
+                $km2?->persen_kepatuhan,
+                $km3?->persen_kepatuhan,
+            ])->filter(fn ($v) => $v !== null);
+
+            $rataKecenderungan = $validMingguan->isNotEmpty()
+                ? round((float) $validMingguan->avg(), 1)
+                : null;
+
+            $sqffq = $sqffqMap->get($siswa->siswa_id);
+            $totalSkorSqffq = $sqffq?->total_skor !== null ? (float) $sqffq->total_skor : null;
+            $kategoriSqffq = '-';
+            if ($totalSkorSqffq !== null) {
+                if ($totalSkorSqffq >= 80) {
+                    $kategoriSqffq = 'Baik';
+                } elseif ($totalSkorSqffq >= 60) {
+                    $kategoriSqffq = 'Cukup';
+                } else {
+                    $kategoriSqffq = 'Kurang';
+                }
+            }
+
+            return [
+                'siswa_id' => $siswa->siswa_id,
+                'nama_lengkap' => $siswa->nama_lengkap ?? 'Tanpa Nama',
+                'nis' => $siswa->nis ?? '-',
+                'jenis_kelamin' => $siswa->jenis_kelamin ?? '-',
+                'status_akun_nama' => $siswa->statusAkun?->nama ?? 'Belum pretest',
+                'skor_pretest' => $siswa->skorPengetahuan?->skor_pretest !== null ? (float) $siswa->skorPengetahuan->skor_pretest : null,
+                'skor_posttest' => $siswa->skorPengetahuan?->skor_posttest !== null ? (float) $siswa->skorPengetahuan->skor_posttest : null,
+                'selisih' => $siswa->skorPengetahuan?->selisih !== null ? (float) $siswa->skorPengetahuan->selisih : null,
+                'm1_persen' => $km1?->persen_kepatuhan !== null ? (float) $km1->persen_kepatuhan : null,
+                'm2_persen' => $km2?->persen_kepatuhan !== null ? (float) $km2->persen_kepatuhan : null,
+                'm3_persen' => $km3?->persen_kepatuhan !== null ? (float) $km3->persen_kepatuhan : null,
+                'rata_kecenderungan' => $rataKecenderungan,
+                'sqffq_skor' => $totalSkorSqffq,
+                'sqffq_kategori' => $kategoriSqffq,
+            ];
+        })->all();
+
+        $kumpulanPretest = collect($siswaRows)->pluck('skor_pretest')->filter(fn ($v) => $v !== null);
+        $kumpulanPosttest = collect($siswaRows)->pluck('skor_posttest')->filter(fn ($v) => $v !== null);
+        $kumpulanSelisih = collect($siswaRows)->pluck('selisih')->filter(fn ($v) => $v !== null);
+        $kumpulanKecenderungan = collect($siswaRows)->pluck('rata_kecenderungan')->filter(fn ($v) => $v !== null);
+        $kumpulanSqffq = collect($siswaRows)->pluck('sqffq_skor')->filter(fn ($v) => $v !== null);
+
+        $ringkasan = [
+            'total_siswa' => count($siswaRows),
+            'rata_pretest' => $kumpulanPretest->isNotEmpty() ? round($kumpulanPretest->avg(), 1) : null,
+            'rata_posttest' => $kumpulanPosttest->isNotEmpty() ? round($kumpulanPosttest->avg(), 1) : null,
+            'rata_selisih' => $kumpulanSelisih->isNotEmpty() ? round($kumpulanSelisih->avg(), 1) : null,
+            'rata_kecenderungan' => $kumpulanKecenderungan->isNotEmpty() ? round($kumpulanKecenderungan->avg(), 1) : null,
+            'rata_sqffq' => $kumpulanSqffq->isNotEmpty() ? round($kumpulanSqffq->avg(), 1) : null,
+        ];
+
+        return view('laporan.cetak-kelas', [
+            'user' => $user,
+            'kelas' => $kelas,
+            'siswaRows' => $siswaRows,
+            'ringkasan' => $ringkasan,
+            'tanggalCetak' => Carbon::now()->translatedFormat('d F Y, H:i'),
+        ]);
+    }
 }

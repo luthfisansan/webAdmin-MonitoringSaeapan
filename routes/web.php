@@ -9,5 +9,6 @@ Route::get('/', function () {
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/admin/laporan/cetak', [LaporanCetakController::class, 'cetakLaporan'])->name('admin.laporan.cetak');
+    Route::get('/admin/laporan/cetak-kelas', [LaporanCetakController::class, 'cetakKelas'])->name('admin.laporan.cetak-kelas');
     Route::get('/admin/detail-siswa/cetak', [LaporanCetakController::class, 'cetakSiswa'])->name('admin.detail-siswa.cetak');
 });
