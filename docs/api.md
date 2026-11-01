@@ -450,6 +450,7 @@ Mengembalikan daftar materi edukasi yang aktif (`aktif = true`) diurutkan berdas
       "materi_edukasi_id": 1,
       "judul": "[DUMMY] Mengapa Sarapan Tidak Boleh Dilewatkan?",
       "ringkasan": "[DUMMY] Materi wajib 1: manfaat sarapan terhadap kadar glukosa darah, fokus, dan prestasi belajar.",
+      "file_pdf": "http://localhost:8000/storage/materi-pdf/panduan-sarapan.pdf",
       "urutan": 1,
       "wajib": true,
       "selesai": true
@@ -458,6 +459,7 @@ Mengembalikan daftar materi edukasi yang aktif (`aktif = true`) diurutkan berdas
       "materi_edukasi_id": 2,
       "judul": "[DUMMY] Panduan Piring Sarapan Gizi Seimbang",
       "ringkasan": "[DUMMY] Materi wajib 2: cara mudah memadukan karbohidrat, protein, sayur/buah, dan air putih saat pagi hari.",
+      "file_pdf": null,
       "urutan": 2,
       "wajib": true,
       "selesai": false
@@ -466,6 +468,7 @@ Mengembalikan daftar materi edukasi yang aktif (`aktif = true`) diurutkan berdas
       "materi_edukasi_id": 3,
       "judul": "[DUMMY] Tips Menyiapkan Sarapan Praktis dalam 10 Menit",
       "ringkasan": "[DUMMY] Materi opsional (tidak wajib): ide persiapan malam hari agar tidak terburu-buru di pagi hari.",
+      "file_pdf": null,
       "urutan": 3,
       "wajib": false,
       "selesai": false
@@ -510,6 +513,7 @@ Mengambil isi lengkap (`konten`) dari satu materi edukasi yang aktif. Mengembali
     "judul": "[DUMMY] Mengapa Sarapan Tidak Boleh Dilewatkan?",
     "ringkasan": "[DUMMY] Materi wajib 1: manfaat sarapan terhadap kadar glukosa darah, fokus, dan prestasi belajar.",
     "konten": "Setelah tidur malam selama 7–8 jam, cadangan glukosa tubuh menurun...",
+    "file_pdf": "http://localhost:8000/storage/materi-pdf/panduan-sarapan.pdf",
     "urutan": 1,
     "wajib": true,
     "selesai": true,

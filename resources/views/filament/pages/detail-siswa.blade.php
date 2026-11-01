@@ -71,7 +71,7 @@
             {{-- 4 Kartu Ringkasan Atas mengikuti D Detail siswa.png --}}
             <div class="dbp-stats-grid">
                 <div class="dbp-stat-card">
-                    <div class="dbp-stat-label">Kepatuhan rencana</div>
+                    <div class="dbp-stat-label">Kecenderungan sarapan</div>
                     <div class="dbp-stat-value">{{ $persenKepatuhanTotal }}%</div>
                     <div class="dbp-stat-meta">{{ $totalHariSesuai }} dari {{ $totalHariBerjalan }} hari sesuai</div>
                 </div>
@@ -252,7 +252,7 @@
 
                     <div class="dbp-panel-card">
                         <div class="dbp-panel-header">
-                            <h3 class="dbp-panel-title">Kepatuhan per Minggu</h3>
+                            <h3 class="dbp-panel-title">Kecenderungan per Minggu (Sikap Konatif)</h3>
                         </div>
 
                         <div class="dbp-table-scroll">
@@ -262,7 +262,7 @@
                                         <th>Minggu</th>
                                         <th>Hari tercatat</th>
                                         <th>Hari sesuai</th>
-                                        <th>Kepatuhan</th>
+                                        <th>Kesesuaian</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -275,7 +275,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="4" class="dbp-empty-cell">Belum ada data kepatuhan mingguan.</td>
+                                            <td colspan="4" class="dbp-empty-cell">Belum ada data kecenderungan sarapan mingguan.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>

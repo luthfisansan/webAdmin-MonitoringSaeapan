@@ -111,6 +111,30 @@ class Siswa extends Model
         return $this->hasMany(PesertaProgram::class, 'siswa_id', 'siswa_id');
     }
 
+    /**
+     * @return HasOne<SkorPengetahuan, $this>
+     */
+    public function skorPengetahuan(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(SkorPengetahuan::class, 'siswa_id', 'siswa_id');
+    }
+
+    /**
+     * @return HasMany<KepatuhanMingguan, $this>
+     */
+    public function kepatuhanMingguan(): HasMany
+    {
+        return $this->hasMany(KepatuhanMingguan::class, 'siswa_id', 'siswa_id');
+    }
+
+    /**
+     * @return HasMany<SqffqSkor, $this>
+     */
+    public function sqffqSkor(): HasMany
+    {
+        return $this->hasMany(SqffqSkor::class, 'siswa_id', 'siswa_id');
+    }
+
     public function getNamaLengkapAttribute(): ?string
     {
         return $this->pengguna?->nama_lengkap;

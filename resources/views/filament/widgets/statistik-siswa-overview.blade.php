@@ -31,9 +31,9 @@
             </div>
 
             <div class="dbp-stat-card">
-                <div class="dbp-stat-label">Kepatuhan rencana</div>
+                <div class="dbp-stat-label">Kecenderungan sarapan</div>
                 <div class="dbp-stat-value">{{ $rataKepatuhanBulan }}%</div>
-                <div class="dbp-stat-meta">rata-rata {{ strtolower($namaBulan) }} {{ $tahun }}</div>
+                <div class="dbp-stat-meta">rata-rata kesesuaian {{ strtolower($namaBulan) }} {{ $tahun }}</div>
             </div>
         </div>
 
@@ -42,8 +42,8 @@
             <div class="dbp-panel-card">
                 <div class="dbp-panel-header">
                     <div>
-                        <h3 class="dbp-panel-title">Kepatuhan rencana per minggu</h3>
-                        <p class="dbp-panel-subtitle">Rincian mingguan bulan {{ $namaBulan }} {{ $tahun }}</p>
+                        <h3 class="dbp-panel-title">Kecenderungan sarapan per minggu</h3>
+                        <p class="dbp-panel-subtitle">Evaluasi sikap konatif sarapan bulan {{ $namaBulan }} {{ $tahun }}</p>
                     </div>
                     <span class="dbp-pill {{ $totalHariBulan > 0 ? 'dbp-pill-success' : 'dbp-pill-neutral' }}">
                         {{ $namaBulan }} {{ $tahun }} · {{ $totalHariBulan > 0 ? 'Data aktual' : 'Belum ada data' }}

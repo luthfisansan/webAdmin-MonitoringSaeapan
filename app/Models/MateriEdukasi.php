@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class MateriEdukasi extends Model
 {
@@ -19,6 +20,7 @@ class MateriEdukasi extends Model
         'judul',
         'ringkasan',
         'konten',
+        'file_pdf',
         'urutan',
         'wajib',
         'aktif',
@@ -44,5 +46,14 @@ class MateriEdukasi extends Model
     public function bacaMateri(): HasMany
     {
         return $this->hasMany(BacaMateri::class, 'materi_edukasi_id', 'materi_edukasi_id');
+    }
+
+    public function getFilePdfUrlAttribute(): ?string
+    {
+        if (! $this->file_pdf) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->file_pdf);
     }
 }

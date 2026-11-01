@@ -278,7 +278,7 @@ it('renders Web Admin DataSiswa, DetailSiswa, and Laporan pages cleanly', functi
     // Halaman Laporan
     Livewire::test(Laporan::class)
         ->assertSee('1. Pengetahuan gizi: pretest vs post test')
-        ->assertSee('2. Kepatuhan rencana sarapan per minggu')
+        ->assertSee('2. Kecenderungan rencana sarapan per minggu')
         ->assertSee('3. Pola konsumsi (SQ-FFQ)')
         ->assertSee('4. Tempat sarapan (food record)')
         ->assertSee('5. Rekap skor konsumsi pangan (SQ-FFQ)');

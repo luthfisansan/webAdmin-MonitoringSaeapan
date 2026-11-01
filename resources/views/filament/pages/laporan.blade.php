@@ -109,10 +109,10 @@
                     </div>
                 </div>
 
-                {{-- Kartu 2: Kepatuhan rencana sarapan per minggu --}}
+                {{-- Kartu 2: Kecenderungan rencana sarapan per minggu --}}
                 <div class="dbp-panel-card">
                     <div class="dbp-panel-header">
-                        <h3 class="dbp-panel-title">2. Kepatuhan rencana sarapan per minggu</h3>
+                        <h3 class="dbp-panel-title">2. Kecenderungan rencana sarapan per minggu (Sikap Konatif)</h3>
                         <span class="dbp-pill dbp-pill-neutral">Minggu 1–3</span>
                     </div>
 
@@ -151,7 +151,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="dbp-empty-cell">Belum ada data kepatuhan mingguan.</td>
+                                        <td colspan="4" class="dbp-empty-cell">Belum ada data kecenderungan sarapan mingguan.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

@@ -446,15 +446,15 @@
                 <div class="stat-box-value">{{ $totalHariSesuai }} / {{ $totalHariBerjalan }}</div>
             </div>
             <div class="stat-box">
-                <div class="stat-box-label">Rata Kepatuhan</div>
+                <div class="stat-box-label">Rata Kesesuaian (Konatif)</div>
                 <div class="stat-box-value">{{ $persenKepatuhanTotal }}%</div>
             </div>
         </div>
 
-        {{-- Bagian 1: Kepatuhan Mingguan --}}
+        {{-- Bagian 1: Kecenderungan Realisasi Mingguan --}}
         <section class="report-section">
             <div class="section-header">
-                <h2 class="section-title">1. Kepatuhan Rencana Sarapan Mingguan</h2>
+                <h2 class="section-title">1. Kecenderungan Realisasi Rencana Sarapan Mingguan (Sikap Konatif)</h2>
                 <span class="section-note">Evaluasi perbandingan Rencana Sarapan vs Food Record Aktual</span>
             </div>
 
@@ -465,7 +465,7 @@
                         <th class="text-center" style="width: 18%;">Hari Berjalan</th>
                         <th class="text-center" style="width: 18%;">Hari Tercatat</th>
                         <th class="text-center" style="width: 18%;">Hari Sesuai</th>
-                        <th class="text-center" style="width: 21%;">Persentase Kepatuhan</th>
+                        <th class="text-center" style="width: 21%;">Persentase Kesesuaian</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -484,7 +484,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="text-center" style="color: var(--text-muted); padding: 12px;">
-                                Belum ada data kepatuhan mingguan yang tercatat.
+                                Belum ada data kecenderungan mingguan yang tercatat.
                             </td>
                         </tr>
                     @endforelse
