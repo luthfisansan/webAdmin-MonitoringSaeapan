@@ -110,4 +110,14 @@ class Siswa extends Model
     {
         return $this->hasMany(PesertaProgram::class, 'siswa_id', 'siswa_id');
     }
+
+    public function getNamaLengkapAttribute(): ?string
+    {
+        return $this->pengguna?->nama_lengkap;
+    }
+
+    public function getSekolahAttribute(): ?Sekolah
+    {
+        return $this->kelas?->sekolah;
+    }
 }

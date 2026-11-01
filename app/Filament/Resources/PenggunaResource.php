@@ -70,6 +70,15 @@ class PenggunaResource extends Resource
                             ->preload()
                             ->required(),
 
+                        Select::make('sekolah_id')
+                            ->label('Sekolah penugasan')
+                            ->relationship('sekolah', 'nama_sekolah')
+                            ->placeholder('Semua Sekolah (Akses Global / Peneliti)')
+                            ->helperText('Kosongkan bila akun memiliki hak akses monitoring ke seluruh sekolah.')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
                         TextInput::make('kata_sandi_hash')
                             ->label('Kata sandi')
                             ->password()
@@ -111,6 +120,14 @@ class PenggunaResource extends Resource
                         'PETUGAS' => 'warning',
                         default => 'gray',
                     })
+                    ->sortable(),
+
+                TextColumn::make('sekolah.nama_sekolah')
+                    ->label('Sekolah')
+                    ->placeholder('Semua Sekolah')
+                    ->badge()
+                    ->color('gray')
+                    ->toggleable()
                     ->sortable(),
 
                 TextColumn::make('aktif')

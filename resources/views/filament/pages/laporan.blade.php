@@ -3,6 +3,18 @@
         {{-- Baris Filter & Tombol Ekspor mengikuti E Laporan.png --}}
         <div class="dbp-page-toolbar">
             <div class="dbp-toolbar-left">
+                <label class="dbp-class-filter-pill" title="Filter sekolah">
+                    <select wire:model.live="sekolahId" class="dbp-filter-select" aria-label="Filter sekolah laporan">
+                        <option value="">Semua sekolah</option>
+                        @foreach ($daftarSekolah as $sekolahOpt)
+                            <option value="{{ $sekolahOpt->sekolah_id }}">{{ $sekolahOpt->nama_sekolah }}</option>
+                        @endforeach
+                    </select>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m5.5 7.5 4.5 4.5 4.5-4.5" />
+                    </svg>
+                </label>
+
                 <label class="dbp-class-filter-pill" title="Filter kelas">
                     <select wire:model.live="kelasId" class="dbp-filter-select" aria-label="Filter kelas laporan">
                         <option value="">Semua kelas</option>
@@ -25,13 +37,14 @@
                     ↓ Unduh Excel (CSV)
                 </button>
 
-                <button
-                    type="button"
-                    onclick="window.print()"
+                <a
+                    href="{{ route('admin.laporan.cetak', ['sekolah_id' => $sekolahId, 'kelas_id' => $kelasId]) }}"
+                    target="_blank"
                     class="dbp-btn-primary"
+                    style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"
                 >
-                    ↓ Cetak / PDF
-                </button>
+                    🖨️ Cetak / PDF
+                </a>
             </div>
         </div>
 

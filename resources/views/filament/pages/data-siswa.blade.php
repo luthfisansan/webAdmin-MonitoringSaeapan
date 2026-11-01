@@ -17,6 +17,18 @@
                     />
                 </div>
 
+                <label class="dbp-class-filter-pill" title="Filter sekolah">
+                    <select wire:model.live="sekolahId" class="dbp-filter-select" aria-label="Filter sekolah">
+                        <option value="">Semua sekolah</option>
+                        @foreach ($daftarSekolah as $sekolahItem)
+                            <option value="{{ $sekolahItem->sekolah_id }}">{{ $sekolahItem->nama_sekolah }}</option>
+                        @endforeach
+                    </select>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="m5.5 7.5 4.5 4.5 4.5-4.5" />
+                    </svg>
+                </label>
+
                 <div class="dbp-filter-pills">
                     <button
                         type="button"
@@ -63,8 +75,8 @@
                 <div class="dbp-alert-banner-left">
                     <span class="dbp-alert-icon" aria-hidden="true">⏳</span>
                     <div>
-                        <div class="dbp-alert-title">{{ $menungguVerifikasiCount }} siswa menunggu verifikasi</div>
-                        <div class="dbp-alert-desc">Isi SQ-FFQ lewat wawancara agar akun mereka bisa masuk ke beranda aplikasi.</div>
+                        <div class="dbp-alert-title">{{ $menungguVerifikasiCount }} siswa siap diverifikasi</div>
+                        <div class="dbp-alert-desc">Siswa telah menyelesaikan pretest dan materi edukasi. Lakukan wawancara SQ-FFQ agar siswa dapat mulai mengisi rencana sarapan.</div>
                     </div>
                 </div>
 
@@ -73,7 +85,7 @@
                     wire:click="toggleAntreanVerifikasi"
                     class="dbp-btn-outline dbp-btn-sm"
                 >
-                    {{ $statusFilter === 'MENUNGGU_VERIFIKASI' ? 'Tampilkan semua' : 'Tampilkan antrean' }}
+                    {{ $statusFilter === 'MENUNGGU_VERIFIKASI' ? 'Tampilkan Semua Siswa' : 'Lihat Antrean Verifikasi' }}
                 </button>
             </div>
         @endif
@@ -109,10 +121,20 @@
                     </div>
 
                     <div class="dbp-field">
+                        <label class="dbp-field-label">Sekolah *</label>
+                        <select wire:model.live="sekolahIdBaru" class="dbp-field-input" required>
+                            <option value="">-- Pilih Sekolah --</option>
+                            @foreach ($daftarSekolah as $sekolahOpt)
+                                <option value="{{ $sekolahOpt->sekolah_id }}">{{ $sekolahOpt->nama_sekolah }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="dbp-field">
                         <label class="dbp-field-label">Kelas *</label>
                         <select wire:model="kelasIdBaru" class="dbp-field-input" required>
                             <option value="">-- Pilih Kelas --</option>
-                            @foreach ($daftarKelas as $kelasOpt)
+                            @foreach ($daftarKelasForm as $kelasOpt)
                                 <option value="{{ $kelasOpt->kelas_id }}">{{ $kelasOpt->nama_kelas }} ({{ $kelasOpt->tahun_ajaran }})</option>
                             @endforeach
                         </select>
@@ -148,6 +170,7 @@
                     <thead>
                         <tr>
                             <th>Nama siswa</th>
+                            <th>Sekolah</th>
                             <th>Kelas</th>
                             <th>Pretest</th>
                             <th>SQ-FFQ</th>
@@ -166,6 +189,9 @@
                                     >
                                         {{ $siswa->nama_lengkap }}
                                     </a>
+                                </td>
+                                <td>
+                                    <span class="dbp-pill dbp-pill-neutral">{{ $siswa->nama_sekolah ?? '-' }}</span>
                                 </td>
                                 <td>{{ $siswa->nama_kelas }}</td>
                                 <td>

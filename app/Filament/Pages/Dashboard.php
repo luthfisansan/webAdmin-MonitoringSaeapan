@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\FoodRecord;
 use App\Models\Kelas;
 use App\Models\Program;
+use App\Models\Sekolah;
 use BackedEnum;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Support\Icons\Heroicon;
@@ -115,20 +116,30 @@ class Dashboard extends BaseDashboard
      * @return array{
      *     daftarBulan: array<int, string>,
      *     daftarTahun: array<int, int>,
+     *     daftarSekolah: Collection<int, Sekolah>,
      *     daftarKelas: Collection<int, Kelas>,
      *     bulanAktif: int,
      *     tahunAktif: int,
+     *     sekolahIdAktif: ?int,
      *     kelasIdAktif: ?int
      * }
      */
     public static function filterViewData(): array
     {
+        $sekolahIdAktif = request()->filled('sekolah_id') ? request()->integer('sekolah_id') : null;
+
         return [
             'daftarBulan' => static::daftarBulan(),
             'daftarTahun' => static::daftarTahun(),
-            'daftarKelas' => Kelas::query()->where('aktif', true)->orderBy('nama_kelas')->get(),
+            'daftarSekolah' => Sekolah::query()->where('aktif', true)->orderBy('nama_sekolah')->get(),
+            'daftarKelas' => Kelas::query()
+                ->where('aktif', true)
+                ->when($sekolahIdAktif, fn ($q) => $q->where('sekolah_id', $sekolahIdAktif))
+                ->orderBy('nama_kelas')
+                ->get(),
             'bulanAktif' => static::resolveBulan(),
             'tahunAktif' => static::resolveTahun(),
+            'sekolahIdAktif' => $sekolahIdAktif,
             'kelasIdAktif' => request()->filled('kelas_id') ? request()->integer('kelas_id') : null,
         ];
     }

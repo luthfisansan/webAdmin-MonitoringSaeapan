@@ -16,6 +16,7 @@
                         <thead>
                             <tr>
                                 <th>Nama siswa</th>
+                                <th>Sekolah</th>
                                 <th>Kelas</th>
                                 <th>Progres item SQ-FFQ</th>
                                 <th>Status SQ-FFQ</th>
@@ -26,6 +27,7 @@
                             @forelse ($antreanList as $antrean)
                                 <tr>
                                     <td class="font-bold">{{ $antrean->nama_lengkap }}</td>
+                                    <td>{{ $antrean->nama_sekolah ?? '-' }}</td>
                                     <td>{{ $antrean->nama_kelas }}</td>
                                     <td>{{ $antrean->item_terisi }} / {{ $antrean->item_total }} item</td>
                                     <td>
@@ -130,11 +132,11 @@
             {{-- Banner Informasi Verifikasi mengikuti C Form SQ-FFQ (petugas).png --}}
             <div class="dbp-alert-banner">
                 <div class="dbp-alert-banner-left">
-                    <span class="dbp-alert-icon" aria-hidden="true">⏳</span>
+                    <span class="dbp-alert-icon" aria-hidden="true">💡</span>
                     <div>
-                        <div class="dbp-alert-title">Setelah disimpan, akun siswa otomatis Terverifikasi</div>
+                        <div class="dbp-alert-title">Verifikasi Akun Otomatis</div>
                         <div class="dbp-alert-desc">
-                            Aplikasi {{ $siswaAktif->pengguna?->nama_lengkap }} akan membuka Beranda saat ia memeriksa status atau login ulang.
+                            Setelah tombol <strong>"Simpan dan verifikasi akun"</strong> ditekan, akun <strong>{{ $siswaAktif->pengguna?->nama_lengkap }}</strong> otomatis berstatus <strong>Terverifikasi</strong> dan langsung dapat membuka Beranda serta merencanakan sarapan di aplikasi mobile.
                         </div>
                     </div>
                 </div>
@@ -147,7 +149,7 @@
                     <div class="dbp-respondent-meta">RESPONDEN</div>
                     <div class="dbp-respondent-name">{{ $siswaAktif->pengguna?->nama_lengkap }}</div>
                     <div class="dbp-respondent-sub">
-                        Kelas {{ $siswaAktif->kelas?->nama_kelas }} · Wawancara {{ \Illuminate\Support\Carbon::parse($tanggalWawancara)->translatedFormat('d M Y') }}
+                        {{ $siswaAktif->kelas?->sekolah?->nama_sekolah ?? 'Sekolah' }} · Kelas {{ $siswaAktif->kelas?->nama_kelas }} · Wawancara {{ \Illuminate\Support\Carbon::parse($tanggalWawancara)->translatedFormat('d M Y') }}
                     </div>
 
                     <div style="margin-top: 0.5rem;">

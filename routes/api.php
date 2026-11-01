@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\ProgramHarianController;
 use Illuminate\Support\Facades\Route;
 
 // Endpoint Publik
+Route::get('/sekolah', [AuthController::class, 'sekolah'])->name('api.sekolah');
 Route::get('/kelas', [AuthController::class, 'kelas'])->name('api.kelas');
 Route::post('/auth/register', [AuthController::class, 'register'])->name('api.auth.register');
 Route::post('/auth/login', [AuthController::class, 'login'])

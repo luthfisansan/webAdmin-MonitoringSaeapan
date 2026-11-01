@@ -276,6 +276,10 @@ it('logs in a student, updates terakhir_login_pada, serves /api/me, and revokes 
                 'nama_lengkap' => 'Rina Permata',
                 'email' => 'rina@siswa.id',
                 'siswa_id' => $siswa->siswa_id,
+                'sekolah' => [
+                    'sekolah_id' => $kelas->sekolah->sekolah_id,
+                    'nama_sekolah' => $kelas->sekolah->nama_sekolah,
+                ],
                 'kelas' => [
                     'kelas_id' => $kelas->kelas_id,
                     'nama_kelas' => '8B',
